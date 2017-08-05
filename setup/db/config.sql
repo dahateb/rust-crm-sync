@@ -1,4 +1,5 @@
 CREATE SCHEMA config; 
+CREATE SCHEMA salesforce;
 
 CREATE TABLE config.objects (
     id SERIAL PRIMARY KEY,

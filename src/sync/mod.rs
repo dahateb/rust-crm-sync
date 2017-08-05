@@ -131,6 +131,7 @@ impl<'a> Sync<'a> {
         .fold(String::new(),|field_string, field_name| field_string + "\n" + field_name.as_str());
         println!("{}", all_fields);
         self.db.save_config_data(&describe);
+        self.db.create_object_table(&item.name, describe.fields);
     }
 }
 

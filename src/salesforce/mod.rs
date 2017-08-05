@@ -78,7 +78,9 @@ impl<'a> Salesforce <'a>{
         let req:Request = self.build_auth_request(req_builder);
         let posted_str = self.call(req).unwrap();
         let list: SObjectList = serde_json::from_str(posted_str.as_str()).unwrap();
-        let filtered_list: Vec<SObject> = list.sobjects.into_iter().filter(|x|x.createable).collect();        
+        let filtered_list: Vec<SObject> = list.sobjects.into_iter()
+        .filter(|x|(x.createable && x.queryable && x.layoutable) || x.custom_setting)
+        .collect();        
         Ok(filtered_list)
     }
 

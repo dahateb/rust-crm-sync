@@ -1,5 +1,5 @@
 [root]
-name = "wget"
+name = "rust-sf-sync"
 version = "0.1.0"
 dependencies = [
  "chrono 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",

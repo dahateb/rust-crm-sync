@@ -1,5 +1,5 @@
 [package]
-name = "wget"
+name = "rust-sf-sync"
 version = "0.1.0"
 authors = ["dan"]
 
