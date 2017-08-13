@@ -1,12 +1,14 @@
 use std::io;
 use std::thread;
-use std::thread::sleep;
+use std::thread::{sleep,yield_now};
 use std::time::Duration;
 use config::Config;
 use salesforce::Salesforce;
 use std::string::String;
 use std::str::FromStr;
 use db::Db;
+use std::thread::JoinHandle;
+use std::sync::{Mutex, Arc};
 
 const STATE_START: u8 = 0;
 const STATE_SETUP: u8 = 49;
@@ -14,13 +16,20 @@ const STATE_SYNC: u8 = 50;
 const STATE_EXIT: u8 = 51;
 const STATE_LIST_OBJECTS: u8 = 52;
 const STATE_SELECTED_OBJECTS: u8 = 53;
+const STATE_START_SYNC: u8 = 49;
+const STATE_STOP_SYNC: u8 = 50;
+
+
+pub mod mappings;
 
 pub struct Sync<'a> {
-    prev_state: u8,
-    state:  u8,
+    level: u8,
+    command:  u8,
     salesforce: Salesforce<'a>,
     input: String,
-    db: Db
+    db: Db,
+    threads: Vec<JoinHandle<u8>>,
+    synch_switch: Arc<Mutex<bool>> 
 }
 
 
@@ -31,11 +40,13 @@ impl<'a> Sync<'a> {
         sf.login();
         sf.print_login_data();
         Sync {
-            prev_state: STATE_START,
-            state: STATE_START,
+            level: STATE_START,
+            command: STATE_START,
             salesforce: sf,
             input: String::new(),
-            db: Db::new()
+            db: Db::new(),
+            threads: Vec::with_capacity(1),
+            synch_switch: Arc::new(Mutex::new(false))
         }
     }
 
@@ -44,31 +55,33 @@ impl<'a> Sync<'a> {
 
         loop {
             match *self {
-                Sync {state: STATE_START, ..} => self.start(),
-                Sync {prev_state: STATE_START, state: STATE_SETUP, ..} => self.setup(),
-                Sync {prev_state: STATE_START, state: STATE_SYNC, ..} => self.sync(),
-                Sync {prev_state: STATE_SETUP, state: STATE_LIST_OBJECTS, ..} => self.list(),
-                Sync {prev_state: STATE_SETUP, state: STATE_SELECTED_OBJECTS, ..} => self.show_selected_objects(),
-                Sync {state: STATE_EXIT, ..} => {
+                Sync {level: STATE_START, command: STATE_START, ..} => self.start(),
+                Sync {level: STATE_START, command: STATE_SETUP, ..} => self.setup(),
+                Sync {level: STATE_START, command: STATE_SYNC, ..} => self.sync(),
+                Sync {level: STATE_SETUP, command: STATE_LIST_OBJECTS, ..} => self.list(),
+                Sync {level: STATE_SETUP, command: STATE_SELECTED_OBJECTS, ..} => self.show_selected_objects(),
+                Sync {level: STATE_SYNC, command: STATE_START_SYNC, ..} => self.start_sync(),
+                Sync {level: STATE_SYNC, command: STATE_STOP_SYNC, ..} => self.stop_sync(),
+                Sync {level: STATE_START, command: STATE_EXIT, ..} => {
                     println!("Exiting ...");
                     break;
                 },
-                Sync {prev_state: STATE_LIST_OBJECTS, ..} => {
-                    println!("Test: {}", self.state);
+                Sync {level: STATE_LIST_OBJECTS, ..} => {
+                    println!("Test: {}", self.command);
                     self.select_object();
                 },
                 _ => {
                     self.start();
-                    println!("Error: {}", self.prev_state);
-                    self.state = STATE_START;
+                    println!("Error: {}", self.level);
+                    self.command = STATE_START;
                 }
             }
             
             match io::stdin().read_line(&mut input) {
                 Ok(n) => {
-                    self.prev_state = self.state;
-                    self.state = input.as_bytes()[0];
-                    self.input = String::from_str(input.trim()).unwrap();
+                    self.level = self.command;
+                    self.command = input.as_bytes()[0];
+                    self.input = String::from_str(input.trim()).unwrap_or_else(|err| String::new());
                     input.clear();
                     drop(n);
                 }
@@ -92,14 +105,43 @@ impl<'a> Sync<'a> {
     
     fn sync(&mut self) {
         println!("Synch:");
-        thread::spawn(|| {
-            for i in 1..100 {
-                println!("hi number {} from the spawned thread!", i);
-                sleep(Duration::from_millis(500));
+        println!("1. Start Synch");
+        println!("2. Stop Synch");
+        /*
+        
+        */
+        
+    }
+
+    fn start_sync(& mut self) {
+        let switch = self.synch_switch.clone();
+        {
+            let mut data = switch.lock().unwrap();
+            *data = true;
+        }
+        let handle = thread::spawn(move || {
+
+            for i in 1.. {
+                {
+                    let data = switch.lock().unwrap();
+                    if !*data {
+                        println!("Stopped Thread after {} loops", i);
+                        return 0;   
+                    }
+                    println!("hi number {} from the spawned thread! state: {}", i, *data);
+                }
+                sleep(Duration::from_millis(1000));
             }
+            return 0;
         });
 
-        self.salesforce.get_last_updated_records("Account",30)
+        self.threads.push(handle);
+        //self.salesforce.get_last_updated_records("Account",30)
+    }
+
+    fn stop_sync(& mut self) {
+        let mut data = self.synch_switch.lock().unwrap();
+        *data = false;
     }
 
     fn list(& mut self) {
