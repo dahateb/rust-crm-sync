@@ -19,15 +19,15 @@ const STATE_SELECTED_OBJECTS: u8 = 53;
 const STATE_START_SYNC: u8 = 49;
 const STATE_STOP_SYNC: u8 = 50;
 
-
+pub mod executer;
 pub mod mappings;
 
 pub struct Sync<'a> {
     level: u8,
     command:  u8,
-    salesforce: Salesforce<'a>,
+    salesforce: Arc<Salesforce<'a>>,
     input: String,
-    db: Db,
+    db: Arc<Db>,
     threads: Vec<JoinHandle<u8>>,
     synch_switch: Arc<Mutex<bool>> 
 }
@@ -42,9 +42,9 @@ impl<'a> Sync<'a> {
         Sync {
             level: STATE_START,
             command: STATE_START,
-            salesforce: sf,
+            salesforce: Arc::new(sf),
             input: String::new(),
-            db: Db::new(),
+            db: Arc::new(Db::new()),
             threads: Vec::with_capacity(1),
             synch_switch: Arc::new(Mutex::new(false))
         }
@@ -111,13 +111,12 @@ impl<'a> Sync<'a> {
 
     fn start_sync(&mut self) {
         let switch = self.synch_switch.clone();
-        {
-            let mut data = switch.lock().unwrap();
-            *data = true;
-        }
+        *switch.lock().unwrap() = true;
+        //let executer = executer::Executer::new(self.db.clone(),self.salesforce.clone());
         let handle = thread::spawn(move || {
-
+            
             for i in 1.. {
+                //executer.execute();
                 {
                     let data = switch.lock().unwrap();
                     if !*data {
@@ -132,7 +131,6 @@ impl<'a> Sync<'a> {
         });
 
         self.threads.push(handle);
-        //self.salesforce.get_last_updated_records("Account",30)
     }
 
     fn stop_sync(& self) {

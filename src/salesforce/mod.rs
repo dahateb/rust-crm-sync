@@ -48,6 +48,11 @@ impl<'a> Salesforce <'a>{
             core: RefCell::new(core) 
         }
     }
+    /*
+    pub fn from_login_data(config: &'a Config,ld: Option<LoginData>) -> Salesforce<'a> {
+
+    }
+    */
 
     pub fn login(&mut self) {
         
