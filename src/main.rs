@@ -7,6 +7,8 @@ extern crate serde_json;
 extern crate chrono;
 extern crate time;
 extern crate postgres;
+extern crate r2d2;
+extern crate r2d2_postgres;
 
 #[macro_use]
 extern crate serde_derive;

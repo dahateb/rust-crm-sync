@@ -1,29 +1,34 @@
-use postgres::{Connection, TlsMode};
 use postgres::rows::Rows;
 use salesforce::objects::{SObjectDescribe, Field};
 use serde_json;
+use r2d2_postgres::{TlsMode, PostgresConnectionManager};
+use r2d2::{Config,Pool};
 
 pub mod mapping;
 
 #[derive(Debug)]
 pub struct Db {
-    conn: Connection
+    pool: Pool<PostgresConnectionManager>
 }
 
 impl Db {
     
     pub fn new() -> Db {
-        let conn = Connection::connect("postgres://postgres@localhost", TlsMode::None)
+        let config = Config::default();
+        let manager = PostgresConnectionManager::new("postgres://postgres@localhost",
+                                                     TlsMode::None).unwrap();
+        let pool = Pool::new(config, manager)
         .map_err(|err| panic!("DB Error: Cannot connect - {}", err.to_string()))
         .unwrap();
         Db {
-            conn: conn
+            pool: pool
         }
     }
 
     pub fn save_config_data(&self, item: &SObjectDescribe ) {
         let field_json = serde_json::to_string(&item.fields).unwrap();
-        self.conn.execute("INSERT INTO config.objects (name, fields) VALUES ($1, $2)",
+        let conn = self.pool.get().unwrap();
+        conn.execute("INSERT INTO config.objects (name, fields) VALUES ($1, $2)",
                  &[&item.name, &field_json]).unwrap();
     }
 
@@ -44,12 +49,14 @@ impl Db {
         query += " updated timestamp";
         query += ")";
         println!("{}", query);
-        self.conn.execute(query.as_str(),&[])
+        let conn = self.pool.get().unwrap();
+        conn.execute(query.as_str(),&[])
         .unwrap();
     }
 
     pub fn get_selected_objects(&self) -> Vec<String> {
-        let rows: Rows = self.conn.query("SELECT id, name, fields FROM config.objects", &[]).unwrap();
+        let conn = self.pool.get().unwrap();
+        let rows: Rows = conn.query("SELECT id, name, fields FROM config.objects", &[]).unwrap();
         return rows.iter()
         .map(|row| row.get(1))
         .collect();
