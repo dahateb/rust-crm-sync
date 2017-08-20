@@ -12,7 +12,7 @@ use config::{Config, SalesforceConfig};
 use self::objects::{SObject, SObjectList, SObjectDescribe};
 use chrono::prelude::*;
 use time::Duration;
-
+use std::cell::RefCell;
 
 pub mod objects;
 
@@ -30,7 +30,8 @@ pub struct Salesforce <'a> {
     config: &'a SalesforceConfig,
     login_data:  Option<LoginData>,
     client: Client<HttpsConnector<HttpConnector>>,
-    core: Core
+    //use RefCell because core needs to be mutable for some reason
+    core: RefCell<Core>
 }
 
 impl<'a> Salesforce <'a>{
@@ -44,7 +45,7 @@ impl<'a> Salesforce <'a>{
             config : &config.salesforce,
             login_data : Option::None,
             client: client,
-            core: core 
+            core: RefCell::new(core) 
         }
     }
 
@@ -68,7 +69,7 @@ impl<'a> Salesforce <'a>{
         self.login_data = Some(ld);
     }
 
-    pub fn get_objects(&mut self) -> Result<Vec<SObject>,String> {
+    pub fn get_objects(& self) -> Result<Vec<SObject>,String> {
         let req_builder = |uri : &String| {
             format!(
                 "{}/services/data/v40.0/sobjects", 
@@ -84,7 +85,7 @@ impl<'a> Salesforce <'a>{
         Ok(filtered_list)
     }
 
-    pub fn describe_object(&mut self, object_name: &str,) -> Result<SObjectDescribe, String> {
+    pub fn describe_object(& self, object_name: &str,) -> Result<SObjectDescribe, String> {
         let req_builder = |uri: &String| {
             format!(
                 "{}/services/data/v40.0/sobjects/{}/describe", 
@@ -98,7 +99,7 @@ impl<'a> Salesforce <'a>{
         Ok(object)
     }
 
-    pub fn get_last_updated_records(&mut self, object_name: &str, time_sec: i64) {
+    pub fn get_last_updated_records(& self, object_name: &str, time_sec: i64) {
         let date_diff: DateTime<Utc> = Utc::now().sub(Duration::minutes(time_sec));
         let query = format!(
             "SELECT+Id,+Name+FROM+{}+WHERE+lastmodifieddate>{}",
@@ -132,9 +133,9 @@ impl<'a> Salesforce <'a>{
         println!("Time: {:?}", date_diff);
     }
 
-    fn call(&mut self, req: Request) -> Result<String, String>{
+    fn call(& self, req: Request) -> Result<String, String>{
         let client = &self.client;        
-        let mut core = &mut self.core;
+        let mut core = &mut self.core.borrow_mut();
         let method =  req.method().clone();
         let post = client.request(req).and_then(|res| {
             println!("{}: {}", method, res.status());

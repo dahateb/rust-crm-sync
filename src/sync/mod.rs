@@ -1,6 +1,6 @@
 use std::io;
 use std::thread;
-use std::thread::{sleep,yield_now};
+use std::thread::{sleep};
 use std::time::Duration;
 use config::Config;
 use salesforce::Salesforce;
@@ -103,17 +103,13 @@ impl<'a> Sync<'a> {
         println!("5. Show synchronized Objects");
     }
     
-    fn sync(&mut self) {
+    fn sync(& self) {
         println!("Synch:");
         println!("1. Start Synch");
         println!("2. Stop Synch");
-        /*
-        
-        */
-        
     }
 
-    fn start_sync(& mut self) {
+    fn start_sync(&mut self) {
         let switch = self.synch_switch.clone();
         {
             let mut data = switch.lock().unwrap();
@@ -139,12 +135,12 @@ impl<'a> Sync<'a> {
         //self.salesforce.get_last_updated_records("Account",30)
     }
 
-    fn stop_sync(& mut self) {
+    fn stop_sync(& self) {
         let mut data = self.synch_switch.lock().unwrap();
         *data = false;
     }
 
-    fn list(& mut self) {
+    fn list(& self) {
         println!("List:");
         let sf_objects = self.salesforce.get_objects().unwrap();
         let mut counter = 0;
@@ -154,7 +150,7 @@ impl<'a> Sync<'a> {
         }
     }
 
-    fn show_selected_objects(& mut self) {
+    fn show_selected_objects(& self) {
         println!("Selected Objects");
         let objects : Vec<String> = self.db.get_selected_objects();
         for i in 0.. objects.len() {
@@ -162,7 +158,7 @@ impl<'a> Sync<'a> {
         }
     }
 
-    fn select_object(& mut self) {
+    fn select_object(& self) {
         let sf_objects = self.salesforce.get_objects().unwrap();
         let index =  self.input.parse::<usize>().unwrap();
         let item = & sf_objects[index];
