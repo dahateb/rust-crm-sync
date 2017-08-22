@@ -29,20 +29,34 @@ pub struct Client {
 
 impl Client {
     
-    pub fn new() -> Client {
+    pub fn new(login_data: Option<LoginData>) -> Client {
         let core = Core::new().unwrap();
         let client = HyperClient::configure()
         .connector(HttpsConnector::new(4, &core.handle()).unwrap())
         .build(&core.handle());
         Client {
-            login_data: None,
+            login_data: login_data,
             client: client,
             core: RefCell::new(core)
         }
     }
 
+    pub fn get_login_data(self) -> LoginData {
+        self.login_data.unwrap()
+    }
+
+    pub fn is_connected(& self) -> bool {
+        let option = self.login_data.as_ref();
+        match option{
+            None => false,
+            Some(value) => true
+        }
+    }
+
     pub fn connect(mut self, config: Rc<SalesforceConfig>) -> Client {
-        
+        if self.is_connected() {
+            return self;
+        }
         let uri = config.uri.parse().unwrap();
         let params = format!(
             "grant_type=password&client_id={}&client_secret={}&username={}&password={}{}",

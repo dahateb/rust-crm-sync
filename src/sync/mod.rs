@@ -37,8 +37,7 @@ pub struct Sync {
 impl Sync {
 
     pub fn new(config: Config) -> Sync {
-        let mut sf = Salesforce::new(Rc::new(config.salesforce));
-        //sf.client.print_login_data();
+        let sf = Salesforce::new(Rc::new(config.salesforce));
         Sync {
             level: STATE_START,
             command: STATE_START,

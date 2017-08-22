@@ -12,7 +12,7 @@ impl Executer {
     pub fn new(db: Arc<Db>, /*salesforce: Arc<Salesforce>*/) -> Executer {
         Executer {
             db: db,
-      //      salesforce: salesforce,
+           // salesforce: salesforce,
             messages: vec![]
         }
     }

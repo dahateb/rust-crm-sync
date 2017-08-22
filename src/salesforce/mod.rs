@@ -9,8 +9,10 @@ use std::rc::Rc;
 
 pub mod objects;
 pub mod client;
+pub mod pool;
 
 use salesforce::client::Client;
+use salesforce::pool::SalesforceConnectionManager;
 
 pub struct Salesforce {
     config: Rc<SalesforceConfig>,
@@ -20,7 +22,7 @@ pub struct Salesforce {
 impl Salesforce {
     
     pub fn new(config: Rc<SalesforceConfig>) -> Salesforce {
-        let client: Client = Client::new().connect(config.clone());
+        let client: Client = Client::new(None).connect(config.clone());
         client.print_login_data();
         Salesforce {
             config : config,
