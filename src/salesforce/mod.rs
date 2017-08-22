@@ -9,10 +9,8 @@ use std::rc::Rc;
 
 pub mod objects;
 pub mod client;
-pub mod pool;
 
 use salesforce::client::Client;
-use salesforce::pool::SalesforceConnectionManager;
 
 pub struct Salesforce {
     config: Rc<SalesforceConfig>,
