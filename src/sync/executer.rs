@@ -2,22 +2,27 @@ use std::sync::Arc;
 use db::Db;
 use salesforce::Salesforce;
 
-pub struct Executer<'a> {
+pub struct Executer {
     db: Arc<Db>,
-    salesforce: Arc<Salesforce<'a>>,
+   // salesforce: Arc<Salesforce<'a>>,
     messages: Vec<String>
 }
 
-impl<'a> Executer<'a> {
-    pub fn new(db: Arc<Db>, salesforce: Arc<Salesforce>) -> Executer {
+impl Executer {
+    pub fn new(db: Arc<Db>, /*salesforce: Arc<Salesforce>*/) -> Executer {
         Executer {
             db: db,
-            salesforce: salesforce,
+      //      salesforce: salesforce,
             messages: vec![]
         }
     }
 
     pub fn execute(& self) {
-        self.salesforce.get_last_updated_records("Account",30);
+        println!("executing.... ");
+        let objects : Vec<String> = self.db.get_selected_objects();
+        for i in 0.. objects.len() {
+            println!("{} {}", i+1, objects[i]);
+        }
+        //self.salesforce.get_last_updated_records("Account",30);
     }
 }

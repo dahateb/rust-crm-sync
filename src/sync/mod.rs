@@ -9,6 +9,7 @@ use std::str::FromStr;
 use db::Db;
 use std::thread::JoinHandle;
 use std::sync::{Mutex, Arc};
+use std::rc::Rc;
 
 const STATE_START: u8 = 0;
 const STATE_SETUP: u8 = 49;
@@ -22,10 +23,10 @@ const STATE_STOP_SYNC: u8 = 50;
 pub mod executer;
 pub mod mappings;
 
-pub struct Sync<'a> {
+pub struct Sync {
     level: u8,
     command:  u8,
-    salesforce: Arc<Salesforce<'a>>,
+    salesforce: Arc<Salesforce>,
     input: String,
     db: Arc<Db>,
     threads: Vec<JoinHandle<u8>>,
@@ -33,12 +34,11 @@ pub struct Sync<'a> {
 }
 
 
-impl<'a> Sync<'a> {
+impl Sync {
 
-    pub fn new(config: &Config) -> Sync {
-        let mut sf = Salesforce::new(&config);
-        sf.login();
-        sf.print_login_data();
+    pub fn new(config: Config) -> Sync {
+        let mut sf = Salesforce::new(Rc::new(config.salesforce));
+        //sf.client.print_login_data();
         Sync {
             level: STATE_START,
             command: STATE_START,
@@ -49,7 +49,7 @@ impl<'a> Sync<'a> {
             synch_switch: Arc::new(Mutex::new(false))
         }
     }
-
+    
     pub fn run(&mut self) {
         let mut input = String::new();
 
@@ -112,11 +112,11 @@ impl<'a> Sync<'a> {
     fn start_sync(&mut self) {
         let switch = self.synch_switch.clone();
         *switch.lock().unwrap() = true;
-        //let executer = executer::Executer::new(self.db.clone(),self.salesforce.clone());
+        let executer = executer::Executer::new(self.db.clone());
         let handle = thread::spawn(move || {
             
             for i in 1.. {
-                //executer.execute();
+                executer.execute();
                 {
                     let data = switch.lock().unwrap();
                     if !*data {
@@ -169,5 +169,6 @@ impl<'a> Sync<'a> {
         self.db.save_config_data(&describe);
         self.db.create_object_table(&item.name, describe.fields);
     }
+
 }
 

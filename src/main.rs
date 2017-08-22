@@ -22,7 +22,7 @@ use sync::Sync;
 
 fn main() {
     let config = Config::new("config\\config.json").unwrap();
-    let mut syncher = Sync::new(&config);
+    let mut syncher = Sync::new(config);
     syncher.run();
 }
 
