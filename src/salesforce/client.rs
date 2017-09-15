@@ -1,14 +1,9 @@
-use std::cell::RefCell;
 use std::rc::Rc;
+use std::collections::HashMap;
+use std::io::Read;
 use config::SalesforceConfig;
-use tokio_core::reactor::Core;
-use futures::{Future, Stream};
-use hyper::Client as HyperClient;
-use hyper::client::HttpConnector;
-use hyper_tls::HttpsConnector;
-use hyper::{Method, Request};
-use hyper::header::{ContentLength, ContentType, Authorization};
-use serde_json::{self,Value};
+use reqwest::{Client as ReqClient, Request, Response };
+use reqwest::header::{Headers, Authorization, Bearer};
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginData {
@@ -22,22 +17,15 @@ pub struct LoginData {
 
 pub struct Client {
     login_data:  Option<LoginData>,
-    client: HyperClient<HttpsConnector<HttpConnector>>,
-    //use RefCell because core needs to be mutable for some reason
-    core: RefCell<Core>
+    client: ReqClient
 }
 
 impl Client {
     
     pub fn new(login_data: Option<LoginData>) -> Client {
-        let core = Core::new().unwrap();
-        let client = HyperClient::configure()
-        .connector(HttpsConnector::new(4, &core.handle()).unwrap())
-        .build(&core.handle());
         Client {
             login_data: login_data,
-            client: client,
-            core: RefCell::new(core)
+            client: ReqClient::new().unwrap()
         }
     }
 
@@ -57,21 +45,20 @@ impl Client {
         if self.is_connected() {
             return self;
         }
-        let uri = config.uri.parse().unwrap();
-        let params = format!(
-            "grant_type=password&client_id={}&client_secret={}&username={}&password={}{}",
-            config.client_id,
-            config.client_secret,
-            config.username,
-            config.password,
-            config.sec_token, 
-        );
-        let mut req = Request::new(Method::Post, uri);
-        req.headers_mut().set(ContentType::form_url_encoded());
-        req.headers_mut().set(ContentLength(params.len() as u64));
-        req.set_body(params);
-        let posted_str = self.call(req);
-        let ld: LoginData = serde_json::from_str(posted_str.unwrap().as_str()).unwrap();
+        let uri = config.uri.clone();
+        let password = format!("{}{}", config.password, config.sec_token);
+        let mut params = HashMap::new();
+        params.insert("grant_type", "password");
+        params.insert("client_id", config.client_id.as_str());
+        params.insert("client_secret", config.client_secret.as_str());
+        params.insert("username", config.username.as_str());
+        params.insert("password", password.as_str());
+        let mut req = self.client.post(uri.as_str()).unwrap();
+        let req = req.form(&params).unwrap().build();
+        let mut response = self.call(req);
+        let ld: LoginData = response.json()
+        .map_err(|err| println!("{}", err))
+        .unwrap();
         self.login_data = Some(ld);
         self
     }
@@ -85,29 +72,36 @@ impl Client {
     pub fn get_resource<F> (&self, req_builder: F) -> Result<String, String> where
         F: Fn(&String) -> String  {
         let req = self.build_auth_request(req_builder);
-        self.call(req)
+        let mut response = self.call(req);
+        let mut result = String::new();
+        let bytes_read= response.read_to_string(&mut result);
+        Ok(result)
+    }
+
+    fn call(&self, req: Request) -> Response {
+        let mut response = self.client.execute(req)
+        .map_err(|err| println!("{:?}" ,err))
+        .unwrap();
+        if !response.status().is_success() {
+            let mut result = String::new();
+            response.read_to_string(&mut result);
+            panic!("{} {}", response.status(), result);
+        }
+        response
     }
 
     fn build_auth_request<F>(&self, req_builder: F) -> Request where
         F: Fn(&String) -> String  {
         let ld = self.login_data.as_ref().unwrap();
         let uri = req_builder(&ld.instance_url);
-        let mut req:Request = Request::new(Method::Get, uri.parse().unwrap());
-        let auth = format!("Bearer {}", ld.access_token);
-        req.headers_mut().set(Authorization(auth));
-        return req;
-    }
-
-    fn call(& self, req: Request) -> Result<String, String>{
-        let client = &self.client;        
-        let mut core = &mut self.core.borrow_mut();
-        let method =  req.method().clone();
-        let post = client.request(req).and_then(|res| {
-            println!("{}: {}", method, res.status());
-            res.body().concat2()
-        });
-        let posted = core.run(post).unwrap();
-        let posted = String::from_utf8(posted.to_vec()).unwrap();
-        Ok(posted)
-    }
+        let mut req = self.client.get(uri.as_str()).unwrap();
+        let mut headers = Headers::new();
+        headers.set(Authorization(
+            Bearer{
+                token: ld.access_token.clone()
+            }
+        ));
+        req.headers(headers);
+        req.build()
+    }    
 }
