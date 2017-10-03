@@ -2,7 +2,7 @@ use serde_json;
 use std::io::prelude::*;
 use std::fs::File;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SalesforceConfig {
     pub uri: String,
     pub client_id: String,
@@ -12,9 +12,15 @@ pub struct SalesforceConfig {
     pub sec_token: String
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SyncConfig {
+    pub timeout: u64
+}
+
+#[derive(Clone,Serialize, Deserialize)]
 pub struct Config {
-    pub salesforce : SalesforceConfig
+    pub salesforce : SalesforceConfig,
+    pub sync: SyncConfig
 }
 
 impl Config {

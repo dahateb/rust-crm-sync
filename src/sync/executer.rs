@@ -4,15 +4,15 @@ use salesforce::Salesforce;
 
 pub struct Executer {
     db: Arc<Db>,
-   // salesforce: Arc<Salesforce<'a>>,
+    salesforce: Arc<Salesforce>,
     messages: Vec<String>
 }
 
 impl Executer {
-    pub fn new(db: Arc<Db>, /*salesforce: Arc<Salesforce>*/) -> Executer {
+    pub fn new(db: Arc<Db>, salesforce: Arc<Salesforce>) -> Executer {
         Executer {
             db: db,
-           // salesforce: salesforce,
+            salesforce: salesforce,
             messages: vec![]
         }
     }
@@ -22,7 +22,7 @@ impl Executer {
         let objects : Vec<String> = self.db.get_selected_objects();
         for i in 0.. objects.len() {
             println!("{} {}", i+1, objects[i]);
-        }
-        //self.salesforce.get_last_updated_records("Account",30);
+            self.salesforce.get_last_updated_records(objects[i].as_str(),30);
+        }        
     }
 }

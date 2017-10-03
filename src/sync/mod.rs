@@ -9,7 +9,6 @@ use std::str::FromStr;
 use db::Db;
 use std::thread::JoinHandle;
 use std::sync::{Mutex, Arc};
-use std::rc::Rc;
 
 const STATE_START: u8 = 0;
 const STATE_SETUP: u8 = 49;
@@ -30,14 +29,15 @@ pub struct Sync {
     input: String,
     db: Arc<Db>,
     threads: Vec<JoinHandle<u8>>,
-    synch_switch: Arc<Mutex<bool>> 
+    synch_switch: Arc<Mutex<bool>>,
+    config: Config 
 }
 
 
 impl Sync {
 
     pub fn new(config: Config) -> Sync {
-        let sf = Salesforce::new(Rc::new(config.salesforce));
+        let sf = Salesforce::new(Arc::new(config.salesforce.clone()));
         Sync {
             level: STATE_START,
             command: STATE_START,
@@ -45,7 +45,8 @@ impl Sync {
             input: String::new(),
             db: Arc::new(Db::new()),
             threads: Vec::with_capacity(1),
-            synch_switch: Arc::new(Mutex::new(false))
+            synch_switch: Arc::new(Mutex::new(false)),
+            config: config
         }
     }
     
@@ -111,7 +112,8 @@ impl Sync {
     fn start_sync(&mut self) {
         let switch = self.synch_switch.clone();
         *switch.lock().unwrap() = true;
-        let executer = executer::Executer::new(self.db.clone());
+        let executer = executer::Executer::new(self.db.clone(), self.salesforce.clone());
+        let timeout = self.config.sync.timeout.clone();
         let handle = thread::spawn(move || {
             
             for i in 1.. {
@@ -124,7 +126,7 @@ impl Sync {
                     }
                     println!("hi number {} from the spawned thread! state: {}", i, *data);
                 }
-                sleep(Duration::from_millis(1000));
+                sleep(Duration::from_millis(timeout));
             }
             return 0;
         });

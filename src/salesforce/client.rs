@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 use std::collections::HashMap;
 use std::io::Read;
 use config::SalesforceConfig;
@@ -41,7 +41,7 @@ impl Client {
         }
     }
 
-    pub fn connect(mut self, config: Rc<SalesforceConfig>) -> Client {
+    pub fn connect(mut self, config: Arc<SalesforceConfig>) -> Client {
         if self.is_connected() {
             return self;
         }
