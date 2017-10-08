@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::collections::HashMap;
 use std::io::Read;
 use config::SalesforceConfig;
@@ -41,11 +40,11 @@ impl Client {
         }
     }
 
-    pub fn connect(mut self, config: Arc<SalesforceConfig>) -> Client {
+    pub fn connect(mut self, config: &'static SalesforceConfig) -> Client {
         if self.is_connected() {
             return self;
         }
-        let uri = config.uri.clone();
+        
         let password = format!("{}{}", config.password, config.sec_token);
         let mut params = HashMap::new();
         params.insert("grant_type", "password");
@@ -53,7 +52,7 @@ impl Client {
         params.insert("client_secret", config.client_secret.as_str());
         params.insert("username", config.username.as_str());
         params.insert("password", password.as_str());
-        let mut req = self.client.post(uri.as_str()).unwrap();
+        let mut req = self.client.post(config.uri.as_str()).unwrap();
         let req = req.form(&params).unwrap().build();
         let mut response = self.call(req);
         let ld: LoginData = response.json()

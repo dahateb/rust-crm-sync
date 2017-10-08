@@ -3,6 +3,7 @@ use salesforce::objects::{SObjectDescribe, Field};
 use serde_json;
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use r2d2::{Config,Pool};
+use config::DbConfig;
 
 pub mod mapping;
 
@@ -13,9 +14,9 @@ pub struct Db {
 
 impl Db {
     
-    pub fn new() -> Db {
+    pub fn new(db_config: &'static DbConfig) -> Db {
         let config = Config::default();
-        let manager = PostgresConnectionManager::new("postgres://postgres@localhost",
+        let manager = PostgresConnectionManager::new(db_config.url.clone(),
                                                      TlsMode::None).unwrap();
         let pool = Pool::new(config, manager)
         .map_err(|err| panic!("DB Error: Cannot connect - {}", err.to_string()))

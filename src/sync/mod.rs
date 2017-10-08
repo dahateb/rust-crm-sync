@@ -30,20 +30,20 @@ pub struct Sync {
     db: Arc<Db>,
     threads: Vec<JoinHandle<u8>>,
     synch_switch: Arc<Mutex<bool>>,
-    config: Config 
+    config: &'static Config 
 }
 
 
 impl Sync {
 
-    pub fn new(config: Config) -> Sync {
-        let sf = Salesforce::new(Arc::new(config.salesforce.clone()));
+    pub fn new(config: &'static Config) -> Sync {
+        let sf = Salesforce::new(&config.salesforce);
         Sync {
             level: STATE_START,
             command: STATE_START,
             salesforce: Arc::new(sf),
             input: String::new(),
-            db: Arc::new(Db::new()),
+            db: Arc::new(Db::new(&config.db)),
             threads: Vec::with_capacity(1),
             synch_switch: Arc::new(Mutex::new(false)),
             config: config

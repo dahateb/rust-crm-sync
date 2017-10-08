@@ -13,6 +13,11 @@ pub struct SalesforceConfig {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+pub struct DbConfig {
+    pub url: String
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SyncConfig {
     pub timeout: u64
 }
@@ -20,7 +25,8 @@ pub struct SyncConfig {
 #[derive(Clone,Serialize, Deserialize)]
 pub struct Config {
     pub salesforce : SalesforceConfig,
-    pub sync: SyncConfig
+    pub sync: SyncConfig,
+    pub db: DbConfig
 }
 
 impl Config {

@@ -20,10 +20,11 @@ mod db;
 use config::Config;
 use sync::Sync;
 
-fn main() {
-    let config = Config::new("config\\config.json").unwrap();
-    let mut syncher = Sync::new(config);
-    syncher.run();
+lazy_static! {
+    static ref CONF:Config = Config::new("config\\config.json").unwrap();
 }
 
-
+fn main() {
+    let mut syncher = Sync::new(&CONF);
+    syncher.run();
+}

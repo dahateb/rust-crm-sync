@@ -5,7 +5,6 @@ use config::{SalesforceConfig};
 use self::objects::{SObject, SObjectList, SObjectDescribe};
 use chrono::prelude::*;
 use time::Duration;
-use std::sync::Arc;
 
 pub mod objects;
 pub mod client;
@@ -13,14 +12,14 @@ pub mod client;
 use salesforce::client::Client;
 
 pub struct Salesforce {
-    config: Arc<SalesforceConfig>,
+    config: &'static SalesforceConfig,
     client: Client
 }
 
 impl Salesforce {
     
-    pub fn new(config: Arc<SalesforceConfig>) -> Salesforce {
-        let client: Client = Client::new(None).connect(config.clone());
+    pub fn new(config: &'static SalesforceConfig) -> Salesforce {
+        let client: Client = Client::new(None).connect(config);
         client.print_login_data();
         Salesforce {
             config : config,
