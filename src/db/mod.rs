@@ -6,6 +6,9 @@ use r2d2::{Config,Pool};
 use config::DbConfig;
 
 pub mod mapping;
+pub mod objects;
+
+use db::objects::ObjectConfig;
 
 #[derive(Debug)]
 pub struct Db {
@@ -55,12 +58,22 @@ impl Db {
         .unwrap();
     }
 
-    pub fn get_selected_objects(&self) -> Vec<String> {
+    pub fn get_selected_objects(&self, interval: i16) -> Vec<ObjectConfig> {
         let conn = self.pool.get().unwrap();
-        let rows: Rows = conn.query("SELECT id, name, fields FROM config.objects", &[]).unwrap();
+        let query = format!("SELECT id, name, fields, last_sync_time FROM config.objects WHERE last_sync_time < current_timestamp - interval '{} minutes'", interval);
+        let rows: Rows = conn.query(query.as_str(), &[]).unwrap();
         return rows.iter()
-        .map(|row| row.get(1))
+        .map(|row| {
+           ObjectConfig {
+               id: row.get(0),
+               name: row.get(1)
+           } 
+        })
         .collect();
     }
 
+    pub fn update_last_sync_time(&self, id: i32 ) {
+        let conn = self.pool.get().unwrap();
+        conn.query("Update config.objects set last_sync_time = now() WHERE id = $1", &[&id]);
+    }
 }

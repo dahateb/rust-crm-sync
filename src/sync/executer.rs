@@ -4,6 +4,7 @@ use salesforce::Salesforce;
 use std::thread::{self, sleep};
 use std::time::Duration;
 use config::SyncConfig;
+use db::objects::ObjectConfig;
 
 
 struct ExecuterInner {
@@ -17,10 +18,11 @@ struct ExecuterInner {
 impl ExecuterInner {
     pub fn execute(& self) {
         println!("executing.... ");
-        let objects : Vec<String> = self.db.get_selected_objects();
+        let objects : Vec<ObjectConfig> = self.db.get_selected_objects(1);
         for i in 0.. objects.len() {
-            println!("{} {}", i+1, objects[i]);
-            self.salesforce.get_last_updated_records(objects[i].as_str(),30);
+            println!("{} {}", i+1, objects[i].name);
+            self.salesforce.get_last_updated_records(objects[i].name.as_str(),30);
+            self.db.update_last_sync_time(objects[i].id);
         }        
     }
 }

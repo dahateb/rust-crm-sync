@@ -1,5 +1,6 @@
 use std::io;
 use config::Config;
+use db::objects::ObjectConfig;
 use salesforce::Salesforce;
 use std::string::String;
 use std::str::FromStr;
@@ -19,13 +20,15 @@ const STATE_STOP_SYNC: u8 = 50;
 pub mod executer;
 pub mod mappings;
 
+use sync::executer::Executer;
+
 pub struct Sync {
     level: u8,
     command:  u8,
     salesforce: Arc<Salesforce>,
     input: String,
     db: Arc<Db>,
-    executer: executer::Executer,
+    executer: Executer,
     config: &'static Config 
 }
 
@@ -42,7 +45,7 @@ impl Sync {
             salesforce: sf_arc.clone(),
             input: String::new(),
             db: db_arc.clone(),
-            executer: executer::Executer::new(db_arc, sf_arc, &config.sync),
+            executer: Executer::new(db_arc, sf_arc, &config.sync),
             config: config
         }
     }
@@ -78,7 +81,10 @@ impl Sync {
                 Ok(n) => {
                     self.level = self.command;
                     self.command = input.as_bytes()[0];
-                    self.input = String::from_str(input.trim()).unwrap_or_else(|err| String::new());
+                    self.input = String::from_str(input.trim()).unwrap_or_else(|err| {
+                        println!("{}",err);
+                        String::new()
+                    });
                     input.clear();
                     drop(n);
                 }
@@ -126,9 +132,9 @@ impl Sync {
 
     fn show_selected_objects(& self) {
         println!("Selected Objects");
-        let objects : Vec<String> = self.db.get_selected_objects();
+        let objects : Vec<ObjectConfig> = self.db.get_selected_objects(0);
         for i in 0.. objects.len() {
-            println!("{} {}", i+1, objects[i]);
+            println!("{} {}", i+1, objects[i].name);
         }
     }
 
