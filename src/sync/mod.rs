@@ -1,14 +1,11 @@
 use std::io;
-use std::thread;
-use std::thread::{sleep};
-use std::time::Duration;
 use config::Config;
 use salesforce::Salesforce;
 use std::string::String;
 use std::str::FromStr;
 use db::Db;
-use std::thread::JoinHandle;
-use std::sync::{Mutex, Arc};
+use std::sync::Arc;
+
 
 const STATE_START: u8 = 0;
 const STATE_SETUP: u8 = 49;
@@ -28,8 +25,7 @@ pub struct Sync {
     salesforce: Arc<Salesforce>,
     input: String,
     db: Arc<Db>,
-    threads: Vec<JoinHandle<u8>>,
-    synch_switch: Arc<Mutex<bool>>,
+    executer: executer::Executer,
     config: &'static Config 
 }
 
@@ -38,14 +34,15 @@ impl Sync {
 
     pub fn new(config: &'static Config) -> Sync {
         let sf = Salesforce::new(&config.salesforce);
+        let db_arc = Arc::new(Db::new(&config.db));
+        let sf_arc = Arc::new(sf);
         Sync {
             level: STATE_START,
             command: STATE_START,
-            salesforce: Arc::new(sf),
+            salesforce: sf_arc.clone(),
             input: String::new(),
-            db: Arc::new(Db::new(&config.db)),
-            threads: Vec::with_capacity(1),
-            synch_switch: Arc::new(Mutex::new(false)),
+            db: db_arc.clone(),
+            executer: executer::Executer::new(db_arc, sf_arc, &config.sync),
             config: config
         }
     }
@@ -109,34 +106,12 @@ impl Sync {
         println!("2. Stop Synch");
     }
 
-    fn start_sync(&mut self) {
-        let switch = self.synch_switch.clone();
-        *switch.lock().unwrap() = true;
-        let executer = executer::Executer::new(self.db.clone(), self.salesforce.clone());
-        let timeout = self.config.sync.timeout.clone();
-        let handle = thread::spawn(move || {
-            
-            for i in 1.. {
-                executer.execute();
-                {
-                    let data = switch.lock().unwrap();
-                    if !*data {
-                        println!("Stopped Thread after {} loops", i);
-                        return 0;   
-                    }
-                    println!("hi number {} from the spawned thread! state: {}", i, *data);
-                }
-                sleep(Duration::from_millis(timeout));
-            }
-            return 0;
-        });
-
-        self.threads.push(handle);
+    fn start_sync(&mut  self) {
+        self.executer.start_sync();
     }
 
     fn stop_sync(& self) {
-        let mut data = self.synch_switch.lock().unwrap();
-        *data = false;
+        self.executer.stop_sync();
     }
 
     fn list(& self) {
