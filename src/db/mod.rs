@@ -32,18 +32,19 @@ impl Db {
     pub fn save_config_data(&self, item: &SObjectDescribe ) {
         let field_json = serde_json::to_string(&item.fields).unwrap();
         let conn = self.pool.get().unwrap();
-        conn.execute("INSERT INTO config.objects (name, fields) VALUES ($1, $2)",
+        conn.execute("INSERT INTO config.objects (name, fields, last_sync_time) VALUES ($1, $2, now())",
                  &[&item.name, &field_json]).unwrap();
     }
 
-    pub fn create_object_table(&self, object_name: &String, fields: Vec<Field>) {
+    pub fn create_object_table(&self, object_name: &String, fields: &Vec<Field>) {
         let mut query = format!("CREATE TABLE salesforce.{}", object_name.to_lowercase());
         query += "(";
         query += " id SERIAL,";
         query += " sfid  varchar(18),";
         for field in fields {
             let field_name = field.name.to_lowercase();
-            let mut mapping = mapping::sf_type_mapping(field.sf_type).unwrap();
+            let sf_type = &field.sf_type;
+            let mut mapping = mapping::sf_type_mapping(sf_type).unwrap();
             if field_name == "id" {continue;}
             if mapping == "varchar" && field.length > 255 {mapping = "text"}
             query += &format!("{} {},", field_name, mapping);

@@ -132,7 +132,7 @@ impl Sync {
 
     fn show_selected_objects(& self) {
         println!("Selected Objects");
-        let objects : Vec<ObjectConfig> = self.db.get_selected_objects(0);
+        let objects : Vec<ObjectConfig> = self.db.get_selected_objects(-1);
         for i in 0.. objects.len() {
             println!("{} {}", i+1, objects[i].name);
         }
@@ -149,7 +149,9 @@ impl Sync {
         .fold(String::new(),|field_string, field_name| field_string + "\n" + field_name.as_str());
         println!("{}", all_fields);
         self.db.save_config_data(&describe);
-        self.db.create_object_table(&item.name, describe.fields);
+        self.db.create_object_table(&item.name, &describe.fields);
+        let value = self.salesforce.get_records_from_describe(describe, &item.name);
+        println!("{:?}", value);
     }
 
 }

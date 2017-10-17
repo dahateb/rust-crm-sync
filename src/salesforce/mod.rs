@@ -74,8 +74,39 @@ impl Salesforce {
         let fields = vec!["Id","Name"];
         for field in fields {
             println!("{}", v["records"][0][field]);
-        }
-        
+        }        
     }
+
+    pub fn get_records_from_describe(&self, describe: SObjectDescribe, object_name: &String ) -> Result<Value, String> {
+        let all_fields: String  = describe.fields.iter()
+        .map(|field| field.name.clone())
+        .fold(String::new(), build_field_string);
+        let query = format!(
+            "SELECT+{}+FROM+{}",
+            all_fields,
+            object_name
+        );
+        println!("{}",query);
+        let req_builder = |uri: &String| {
+            format!(
+                "{}/services/data/v40.0/query/?q={}", 
+                uri,
+                query
+            )
+        };
+        let posted_str = self.client.get_resource(req_builder).unwrap();
+        let v: Value = serde_json::from_str(posted_str.as_str()).unwrap();
+        Ok(v)
+    } 
 }
 
+fn build_field_string (field_string: String, field_name: String) -> String {
+    let mut result = field_string;
+    if result.len() == 0 {
+        result.push_str(field_name.as_str());
+    }else {
+        result.push_str(",");
+        result.push_str(field_name.as_str());
+    }
+    result
+}
