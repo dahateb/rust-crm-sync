@@ -125,16 +125,17 @@ impl Sync {
         let sf_objects = self.salesforce.get_objects().unwrap();
         let mut counter = 0;
         for obj in &sf_objects {
-            println!("{}. {} - {}",counter, obj.name, obj.createable);
+            println!("{}.\t{}\t\t\t\t{}",counter, obj.name, obj.createable);
             counter += 1 ;
         }
+        println!("Select Object:");
     }
 
     fn show_selected_objects(& self) {
         println!("Selected Objects");
         let objects : Vec<ObjectConfig> = self.db.get_selected_objects(-1);
         for i in 0.. objects.len() {
-            println!("{} {}", i+1, objects[i].name);
+            println!("{}\t{}\t\t\t{}", i+1, objects[i].name, objects[i].count);
         }
     }
 
@@ -150,8 +151,9 @@ impl Sync {
         println!("{}", all_fields);
         self.db.save_config_data(&describe);
         self.db.create_object_table(&item.name, &describe.fields);
-        let value = self.salesforce.get_records_from_describe(describe, &item.name);
-        println!("{:?}", value);
+        let wrapper = self.salesforce.get_records_from_describe(&describe, &item.name);
+        let row_count = self.db.populate(&wrapper.unwrap());
+        println!("Synched {} rows", row_count);
     }
 
 }

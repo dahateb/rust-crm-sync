@@ -1,5 +1,5 @@
 use postgres::rows::Rows;
-use salesforce::objects::{SObjectDescribe, Field};
+use salesforce::objects::{SObjectDescribe, Field, SObjectRowResultWrapper};
 use serde_json;
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use r2d2::{Config,Pool};
@@ -65,9 +65,14 @@ impl Db {
         let rows: Rows = conn.query(query.as_str(), &[]).unwrap();
         return rows.iter()
         .map(|row| {
+           let name: String = row.get(1);
+           let query = format!("SELECT count(*)::int FROM salesforce.{:?}", name.to_lowercase()); 
+           let count_rows: Rows = conn.query(query.as_str(), &[]).unwrap();
+           let count: i32 = count_rows.get(0).get(0) ;
            ObjectConfig {
                id: row.get(0),
-               name: row.get(1)
+               name: name,
+               count: count as u32
            } 
         })
         .collect();
@@ -76,5 +81,23 @@ impl Db {
     pub fn update_last_sync_time(&self, id: i32 ) {
         let conn = self.pool.get().unwrap();
         conn.query("Update config.objects set last_sync_time = now() WHERE id = $1", &[&id]);
+    }
+
+    pub fn populate(&self, wrapper: &SObjectRowResultWrapper) -> u32{
+        let mut count = 0;
+        for row in &wrapper.rows {
+            let query = format!(
+                "INSERT INTO salesforce.{} ({}) VALUES ({});",
+                wrapper.object_name,
+                row.0.join(","),
+                row.1.join(",")
+            );
+            println!("{}", query);
+            let conn = self.pool.get().unwrap();
+            conn.execute(query.as_str(),&[])
+            .unwrap();
+            count += 1;
+        };
+        count
     }
 }

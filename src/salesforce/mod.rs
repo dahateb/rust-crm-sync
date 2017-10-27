@@ -2,7 +2,7 @@ use std::str::{self};
 use std::ops::Sub;
 use serde_json::{self,Value};
 use config::{SalesforceConfig};
-use self::objects::{SObject, SObjectList, SObjectDescribe};
+use self::objects::{SObject, SObjectList, SObjectDescribe, SObjectRowResultWrapper};
 use chrono::prelude::*;
 use time::Duration;
 
@@ -77,7 +77,8 @@ impl Salesforce {
         }        
     }
 
-    pub fn get_records_from_describe(&self, describe: SObjectDescribe, object_name: &String ) -> Result<Value, String> {
+    pub fn get_records_from_describe(&self, describe: &SObjectDescribe, object_name: &String ) 
+                                    -> Result<SObjectRowResultWrapper, String> {
         let all_fields: String  = describe.fields.iter()
         .map(|field| field.name.clone())
         .fold(String::new(), build_field_string);
@@ -96,7 +97,7 @@ impl Salesforce {
         };
         let posted_str = self.client.get_resource(req_builder).unwrap();
         let v: Value = serde_json::from_str(posted_str.as_str()).unwrap();
-        Ok(v)
+        Ok(SObjectRowResultWrapper::new(describe, v))
     } 
 }
 
