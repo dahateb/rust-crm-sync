@@ -18,7 +18,7 @@ struct ExecuterInner {
 impl ExecuterInner {
     pub fn execute(& self) {
         println!("executing.... ");
-        let objects : Vec<ObjectConfig> = self.db.get_selected_objects(1);
+        let objects : Vec<ObjectConfig> = self.db.get_selected_objects(1).unwrap();
         for i in 0.. objects.len() {
             println!("{} {}", i+1, objects[i].name);
             self.salesforce.get_last_updated_records(objects[i].name.as_str(),30);

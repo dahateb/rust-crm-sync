@@ -6,6 +6,7 @@ use std::string::String;
 use std::str::FromStr;
 use db::Db;
 use std::sync::Arc;
+use std::cell::RefCell;
 
 
 const STATE_START: u8 = 0;
@@ -19,8 +20,10 @@ const STATE_STOP_SYNC: u8 = 50;
 
 pub mod executer;
 pub mod mappings;
+pub mod cache;
 
 use sync::executer::Executer;
+use sync::cache::SyncObjectCache;
 
 pub struct Sync {
     level: u8,
@@ -29,7 +32,8 @@ pub struct Sync {
     input: String,
     db: Arc<Db>,
     executer: Executer,
-    config: &'static Config 
+    config: &'static Config,
+    cache: RefCell<SyncObjectCache>
 }
 
 
@@ -46,7 +50,8 @@ impl Sync {
             input: String::new(),
             db: db_arc.clone(),
             executer: Executer::new(db_arc, sf_arc, &config.sync),
-            config: config
+            config: config,
+            cache: Default::default()
         }
     }
     
@@ -67,8 +72,12 @@ impl Sync {
                     break;
                 },
                 Sync {level: STATE_LIST_OBJECTS, ..} => {
-                    println!("Test: {}", self.command);
+                    println!("Selected Object: {}", self.command);
                     self.select_object();
+                },
+                Sync {level: STATE_SELECTED_OBJECTS, ..} => {
+                    self.delete_object();
+                    println!("Deleted Object: {}" , self.command);
                 },
                 _ => {
                     self.start();
@@ -123,26 +132,31 @@ impl Sync {
     fn list(& self) {
         println!("List:");
         let sf_objects = self.salesforce.get_objects().unwrap();
-        let mut counter = 0;
-        for obj in &sf_objects {
-            println!("{}.\t{}\t\t\t\t{}",counter, obj.name, obj.createable);
-            counter += 1 ;
+        for i in 0..sf_objects.len() {
+            println!("{}.\t{}\t\t\t\t{}",i, sf_objects[i].name, sf_objects[i].createable);
         }
         println!("Select Object:");
+        self.cache.borrow_mut().sf_objects = Some(sf_objects);
     }
 
     fn show_selected_objects(& self) {
         println!("Selected Objects");
-        let objects : Vec<ObjectConfig> = self.db.get_selected_objects(-1);
+        let objects : Vec<ObjectConfig> = self.db.get_selected_objects(-1).unwrap();
         for i in 0.. objects.len() {
-            println!("{}\t{}\t\t\t{}", i+1, objects[i].name, objects[i].count);
+            println!("{}.\t{}\t\t\t{}", i+1, objects[i].name, objects[i].count);
         }
+        self.cache.borrow_mut().db_objects = Some(objects);
     }
 
     fn select_object(& self) {
-        let sf_objects = self.salesforce.get_objects().unwrap();
-        let index =  self.input.parse::<usize>().unwrap();
-        let item = & sf_objects[index];
+        let cache = &self.cache.borrow();
+        let sf_objects = cache.sf_objects.as_ref().unwrap();
+        let index =  self.input.parse::<isize>().unwrap_or_else(|_err| -1);
+        if index == -1 {
+            println!("Input invalid");
+            return;
+        }
+        let item = & sf_objects[index as usize];
         println!("selected object: {}", item.name);
         let describe = self.salesforce.describe_object(&item.name).unwrap();
         let all_fields: String  = describe.fields.iter()
@@ -154,7 +168,20 @@ impl Sync {
         let wrapper = self.salesforce.get_records_from_describe(&describe, &item.name);
         let row_count = self.db.populate(&wrapper.unwrap());
         println!("Synched {} rows", row_count);
+        
     }
 
+    fn delete_object(&self) {
+        let cache = &self.cache.borrow();
+        let db_objects = cache.db_objects.as_ref().unwrap();
+        let index =  self.input.parse::<isize>().unwrap_or_else(|_err| -1);
+        if index == -1 || index as usize > db_objects.len() {
+            println!("Input invalid");
+            return;
+        }
+        let obj =&db_objects[(index-1) as usize];
+        println!("Delete Object: {}", obj.name);
+        self.db.destroy(obj.id, &obj.name);
+    }
 }
 

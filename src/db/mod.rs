@@ -59,11 +59,11 @@ impl Db {
         .unwrap();
     }
 
-    pub fn get_selected_objects(&self, interval: i16) -> Vec<ObjectConfig> {
+    pub fn get_selected_objects(&self, interval: i16) -> Result<Vec<ObjectConfig>, String> {
         let conn = self.pool.get().unwrap();
         let query = format!("SELECT id, name, fields, last_sync_time FROM config.objects WHERE last_sync_time < current_timestamp - interval '{} minutes'", interval);
         let rows: Rows = conn.query(query.as_str(), &[]).unwrap();
-        return rows.iter()
+        let result = rows.iter()
         .map(|row| {
            let name: String = row.get(1);
            let query = format!("SELECT count(*)::int FROM salesforce.{:?}", name.to_lowercase()); 
@@ -76,6 +76,7 @@ impl Db {
            } 
         })
         .collect();
+        Ok(result)
     }
 
     pub fn update_last_sync_time(&self, id: i32 ) {
@@ -99,5 +100,13 @@ impl Db {
             count += 1;
         };
         count
+    }
+
+    pub fn destroy(&self, id: i32, name: &String) {
+        let query = format!("DROP TABLE salesforce.{}", name.to_lowercase());
+        let conn = self.pool.get().unwrap();
+        let _result = conn.execute(query.as_str(),&[]).unwrap();
+        let query = format!("DELETE FROM config.objects where id = {}", id);
+        let _result = conn.execute(query.as_str(),&[]).unwrap();
     }
 }
