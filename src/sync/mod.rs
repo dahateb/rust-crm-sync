@@ -167,7 +167,7 @@ impl Sync {
         self.db.create_object_table(&item.name, &describe.fields);
         let wrapper = self.salesforce.get_records_from_describe(&describe, &item.name);
         let row_count = self.db.populate(&wrapper.unwrap());
-        println!("Synched {} rows", row_count);
+        println!("Synched {} rows", row_count.unwrap());
         
     }
 

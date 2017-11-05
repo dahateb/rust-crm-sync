@@ -1,4 +1,5 @@
 use serde_json::value::Value;
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
 pub struct SObjectList{
@@ -37,7 +38,7 @@ pub struct Field {
 }
 
 pub struct SObjectRowResultWrapper {
-    pub rows: Vec<(Vec<String>, Vec<String>)>,
+    pub rows: HashMap<String, (Vec<String>, Vec<String>)>,
     pub object_name: String
 }
 
@@ -45,7 +46,7 @@ impl SObjectRowResultWrapper {
 
     pub fn new(name: &String, fields: &Vec<Field>, rows: Value) -> SObjectRowResultWrapper {
         let rows_raw =  rows["records"].as_array().unwrap();
-        let mut result: Vec<(Vec<String>, Vec<String>)> = Vec::new();
+        let mut result: HashMap<String, (Vec<String>, Vec<String>)> = HashMap::new();
         for row in rows_raw {
             let mut field_names: Vec<String> = Vec::new();
             let mut field_values: Vec<String> = Vec::new();
@@ -71,7 +72,7 @@ impl SObjectRowResultWrapper {
                     _ => field_values.push(value.to_string().clone())
                 }                
             }
-            result.push((field_names, field_values));
+            result.insert(row["Id"].to_string(), (field_names, field_values));
         }    
         SObjectRowResultWrapper {
             rows: result,

@@ -22,8 +22,9 @@ impl ExecuterInner {
         for i in 0.. objects.len() {
             let fields = objects[i].get_field_names();
             println!("{} {} {:?}", i+1, objects[i].name, fields);
-            let rows = self.salesforce.get_last_updated_records(&objects[i],1);
-            self.db.upsert_object_rows( &rows.unwrap());
+            let row_result = self.salesforce.get_last_updated_records(&objects[i],1).unwrap();
+            println!("num rows to synch: {}", row_result.rows.len());
+            self.db.upsert_object_rows( &row_result);
             self.db.update_last_sync_time(objects[i].id);
         }        
     }

@@ -91,9 +91,9 @@ impl Db {
 
     }
 
-    pub fn populate(&self, wrapper: &SObjectRowResultWrapper) -> u32{
+    pub fn populate(&self, wrapper: &SObjectRowResultWrapper) -> Result<u32,String>{
         let mut count = 0;
-        for row in &wrapper.rows {
+        for row in wrapper.rows.values() {
             let query = format!(
                 "INSERT INTO salesforce.{} ({}) VALUES ({});",
                 wrapper.object_name,
@@ -102,11 +102,11 @@ impl Db {
             );
             println!("{}", query);
             let conn = self.pool.get().unwrap();
-            conn.execute(query.as_str(),&[])
-            .unwrap();
+            let result = try!(conn.execute(query.as_str(),&[]).map_err(|err| err.to_string()));
+            println!("{:?}", result);
             count += 1;
         };
-        count
+        Ok(count)
     }
 
     pub fn destroy(&self, id: i32, name: &String) {
