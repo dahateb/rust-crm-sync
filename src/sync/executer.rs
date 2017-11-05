@@ -20,8 +20,10 @@ impl ExecuterInner {
         println!("executing.... ");
         let objects : Vec<ObjectConfig> = self.db.get_selected_objects(1).unwrap();
         for i in 0.. objects.len() {
-            println!("{} {}", i+1, objects[i].name);
-            self.salesforce.get_last_updated_records(objects[i].name.as_str(),30);
+            let fields = objects[i].get_field_names();
+            println!("{} {} {:?}", i+1, objects[i].name, fields);
+            let rows = self.salesforce.get_last_updated_records(&objects[i],1);
+            self.db.upsert_object_rows( &rows.unwrap());
             self.db.update_last_sync_time(objects[i].id);
         }        
     }

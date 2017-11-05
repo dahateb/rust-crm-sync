@@ -10,6 +10,7 @@ pub mod objects;
 pub mod client;
 
 use salesforce::client::Client;
+use db::objects::ObjectConfig;
 
 pub struct Salesforce {
     config: &'static SalesforceConfig,
@@ -54,11 +55,13 @@ impl Salesforce {
         Ok(object)
     }
 
-    pub fn get_last_updated_records(& self, object_name: &str, time_sec: i64) {
+    pub fn get_last_updated_records(& self,object_config: &ObjectConfig, time_sec: i64) 
+    -> Result<SObjectRowResultWrapper, String>{
         let date_diff: DateTime<Utc> = Utc::now().sub(Duration::minutes(time_sec));
         let query = format!(
-            "SELECT+Id,+Name+FROM+{}+WHERE+lastmodifieddate>{}",
-            object_name,
+            "SELECT+{}+FROM+{}+WHERE+lastmodifieddate>{}",
+            object_config.get_field_names().join(","),
+            object_config.name,
             date_diff.format("%Y-%m-%dT%H:%M:%SZ").to_string()
         );
         println!("{}",query);
@@ -71,20 +74,20 @@ impl Salesforce {
         };
         let posted_str = self.client.get_resource(req_builder).unwrap();
         let v: Value = serde_json::from_str(posted_str.as_str()).unwrap();
-        let fields = vec!["Id","Name"];
-        for field in fields {
-            println!("{}", v["records"][0][field]);
-        }        
+        if !v["records"].is_array() {
+            return Err("Error fetching data".to_owned());
+        }
+        Ok(SObjectRowResultWrapper::new(&object_config.name, &object_config.fields, v))
     }
 
     pub fn get_records_from_describe(&self, describe: &SObjectDescribe, object_name: &String ) 
                                     -> Result<SObjectRowResultWrapper, String> {
-        let all_fields: String  = describe.fields.iter()
+        let all_fields: Vec<String>  = describe.fields.iter()
         .map(|field| field.name.clone())
-        .fold(String::new(), build_field_string);
+        .collect();
         let query = format!(
             "SELECT+{}+FROM+{}",
-            all_fields,
+            all_fields.join(","),
             object_name
         );
         println!("{}",query);
@@ -97,17 +100,6 @@ impl Salesforce {
         };
         let posted_str = self.client.get_resource(req_builder).unwrap();
         let v: Value = serde_json::from_str(posted_str.as_str()).unwrap();
-        Ok(SObjectRowResultWrapper::new(describe, v))
+        Ok(SObjectRowResultWrapper::new(&describe.name, &describe.fields, v))
     } 
-}
-
-fn build_field_string (field_string: String, field_name: String) -> String {
-    let mut result = field_string;
-    if result.len() == 0 {
-        result.push_str(field_name.as_str());
-    }else {
-        result.push_str(",");
-        result.push_str(field_name.as_str());
-    }
-    result
 }

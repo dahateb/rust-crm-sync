@@ -36,7 +36,7 @@ impl Client {
         let option = self.login_data.as_ref();
         match option{
             None => false,
-            Some(value) => true
+            Some(_value) => true
         }
     }
 

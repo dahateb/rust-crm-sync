@@ -1,6 +1,7 @@
 use postgres::rows::Rows;
 use salesforce::objects::{SObjectDescribe, Field, SObjectRowResultWrapper};
 use serde_json;
+use serde_json::value::Value;
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use r2d2::{Config,Pool};
 use config::DbConfig;
@@ -69,11 +70,12 @@ impl Db {
            let query = format!("SELECT count(*)::int FROM salesforce.{:?}", name.to_lowercase()); 
            let count_rows: Rows = conn.query(query.as_str(), &[]).unwrap();
            let count: i32 = count_rows.get(0).get(0) ;
-           ObjectConfig {
-               id: row.get(0),
-               name: name,
-               count: count as u32
-           } 
+           ObjectConfig::new(
+               row.get(0),
+               name,
+               count as u32,
+               row.get(2)
+           )
         })
         .collect();
         Ok(result)
@@ -81,7 +83,12 @@ impl Db {
 
     pub fn update_last_sync_time(&self, id: i32 ) {
         let conn = self.pool.get().unwrap();
-        conn.query("Update config.objects set last_sync_time = now() WHERE id = $1", &[&id]);
+        let _result = conn.query("Update config.objects set last_sync_time = now() WHERE id = $1", &[&id]);
+    }
+
+    pub fn upsert_object_rows(&self, wrapper: &SObjectRowResultWrapper) {
+        let conn = self.pool.get().unwrap();
+
     }
 
     pub fn populate(&self, wrapper: &SObjectRowResultWrapper) -> u32{

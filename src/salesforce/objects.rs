@@ -43,14 +43,14 @@ pub struct SObjectRowResultWrapper {
 
 impl SObjectRowResultWrapper {
 
-    pub fn new(describe: &SObjectDescribe, rows: Value) -> SObjectRowResultWrapper {
+    pub fn new(name: &String, fields: &Vec<Field>, rows: Value) -> SObjectRowResultWrapper {
         let rows_raw =  rows["records"].as_array().unwrap();
         let mut result: Vec<(Vec<String>, Vec<String>)> = Vec::new();
         for row in rows_raw {
             let mut field_names: Vec<String> = Vec::new();
             let mut field_values: Vec<String> = Vec::new();
             
-            for field in &describe.fields {
+            for field in fields {
                 //filter compound address type
                 if field.sf_type == "address" {
                     continue;
@@ -75,7 +75,7 @@ impl SObjectRowResultWrapper {
         }    
         SObjectRowResultWrapper {
             rows: result,
-            object_name: describe.name.clone()
+            object_name: name.clone()
         }
     }
 }
