@@ -34,7 +34,8 @@ pub struct Field {
     pub length: u32,
     pub label: String,
     #[serde(rename="type")]
-    pub sf_type: String
+    pub sf_type: String,
+    pub updateable: bool
 }
 
 pub struct SObjectRowResultWrapper {
