@@ -66,13 +66,17 @@ impl SObjectRowResultWrapper {
                 match value {
                     //add single quotes for Strings
                     &Value::String(ref val) => {
-                        let str_val = val.to_string().clone();
-                        field_values.push(format!("'{}'", str_val));
+                        let mut str_val = String::new();
+                        str_val.push_str("'");
+                        str_val.push_str(val.as_str());
+                        str_val.push_str("'");
+                        field_values.push(str_val);
                     },
                     _ => field_values.push(value.to_string().clone())
                 }                
             }
-            result.insert(row["Id"].to_string(), (field_names, field_values));
+            let id = row["Id"].as_str().unwrap().to_owned();
+            result.insert(id, (field_names, field_values));
         }    
         SObjectRowResultWrapper {
             rows: result,

@@ -86,25 +86,30 @@ impl Db {
         let _result = conn.query("Update config.objects set last_sync_time = now() WHERE id = $1", &[&id]);
     }
 
-    pub fn upsert_object_rows(&self, wrapper: &SObjectRowResultWrapper) {
-        let conn = self.pool.get().unwrap();
-
+    pub fn upsert_object_rows(&self, wrapper: &SObjectRowResultWrapper)
+        ->Result<u64, String> {
+        let mut count = 0;
+        for id in wrapper.rows.keys() {
+            let mut result = try!{
+                self.update(id, &wrapper.object_name, &wrapper.rows.get(id).unwrap())
+            };
+            if result == 0 {
+                result = try!{
+                    self.insert(&wrapper.object_name, &wrapper.rows.get(id).unwrap())
+                }
+            }
+            count += result;
+        }
+        Ok(count)
     }
 
-    pub fn populate(&self, wrapper: &SObjectRowResultWrapper) -> Result<u32,String>{
-        let mut count = 0;
+    pub fn populate(&self, wrapper: &SObjectRowResultWrapper) -> Result<u64,String>{
+        let mut count  = 0;
         for row in wrapper.rows.values() {
-            let query = format!(
-                "INSERT INTO salesforce.{} ({}) VALUES ({});",
-                wrapper.object_name,
-                row.0.join(","),
-                row.1.join(",")
+            count += try!(
+                self.insert(&wrapper.object_name, &row)
+                    .map_err(|err|err.to_string())
             );
-            println!("{}", query);
-            let conn = self.pool.get().unwrap();
-            let result = try!(conn.execute(query.as_str(),&[]).map_err(|err| err.to_string()));
-            println!("{:?}", result);
-            count += 1;
         };
         Ok(count)
     }
@@ -115,5 +120,41 @@ impl Db {
         let _result = conn.execute(query.as_str(),&[]).unwrap();
         let query = format!("DELETE FROM config.objects where id = {}", id);
         let _result = conn.execute(query.as_str(),&[]).unwrap();
+    }
+
+    fn insert(&self, object_name: &String, row: &(Vec<String>, Vec<String>)) 
+        -> Result<u64,String>{
+        let query = format!(
+                "INSERT INTO salesforce.{} ({}) VALUES ({});",
+                object_name,
+                row.0.join(","),
+                row.1.join(",")
+        );
+        println!("{}", query);
+        let conn = self.pool.get().unwrap();
+        let result = try!(conn.execute(query.as_str(),&[]).map_err(|err| err.to_string()));
+        println!("{:?}", result);
+        Ok(result)
+    }
+
+    fn update(&self, id: &String, object_name: &String, row: &(Vec<String>, Vec<String>)) 
+        -> Result<u64, String> {
+        let mut query = String::from("UPDATE salesforce.") + &object_name.to_lowercase() + " ";
+        query.push_str("SET ");
+        let mut fields: Vec<String> = Vec::new();
+        for i in 0..row.0.len() {
+
+           let field = [row.0[i].clone(),row.1[i].clone()].join("=");
+           fields.push(field);
+        }
+        query.push_str(&fields.join(","));
+        query.push_str(" WHERE sfid ='");
+        query.push_str(id);
+        query.push_str("'");
+        println!("{}", query);
+        let conn = self.pool.get().unwrap();
+        let result = try!(conn.execute(query.as_str(),&[]).map_err(|err| err.to_string()));
+        println!("{:?}", result);
+        Ok(result)
     }
 }

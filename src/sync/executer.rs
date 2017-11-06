@@ -24,7 +24,9 @@ impl ExecuterInner {
             println!("{} {} {:?}", i+1, objects[i].name, fields);
             let row_result = self.salesforce.get_last_updated_records(&objects[i],1).unwrap();
             println!("num rows to synch: {}", row_result.rows.len());
-            self.db.upsert_object_rows( &row_result);
+            let result = self.db.upsert_object_rows( &row_result)
+                                .map_err(|err| println!("{}", err));
+            println!("{}", result.unwrap());
             self.db.update_last_sync_time(objects[i].id);
         }        
     }
