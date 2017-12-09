@@ -1,7 +1,6 @@
 use postgres::rows::Rows;
 use salesforce::objects::{SObjectDescribe, Field, SObjectRowResultWrapper};
 use serde_json;
-use serde_json::value::Value;
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use r2d2::{Config,Pool};
 use config::DbConfig;
@@ -124,16 +123,19 @@ impl Db {
 
     fn insert(&self, object_name: &String, row: &(Vec<String>, Vec<String>)) 
         -> Result<u64,String>{
+        let row_values = row.1.iter()
+            .map(escape_single_quote)
+            .collect::<Vec<String>>();
         let query = format!(
                 "INSERT INTO salesforce.{} ({}) VALUES ({});",
                 object_name,
                 row.0.join(","),
-                row.1.join(",")
+                row_values.join(",")
         );
-        println!("{}", query);
+        //println!("{}", query);
         let conn = self.pool.get().unwrap();
         let result = try!(conn.execute(query.as_str(),&[]).map_err(|err| err.to_string()));
-        println!("{:?}", result);
+        //println!("{:?}", result);
         Ok(result)
     }
 
@@ -143,8 +145,10 @@ impl Db {
         query.push_str("SET ");
         let mut fields: Vec<String> = Vec::new();
         for i in 0..row.0.len() {
-
-           let field = [row.0[i].clone(),row.1[i].clone()].join("=");
+           let field = [
+               row.0[i].clone(),
+               escape_single_quote(&row.1[i].clone())
+            ].join("=");
            fields.push(field);
         }
         query.push_str(&fields.join(","));
@@ -157,4 +161,14 @@ impl Db {
         println!("{:?}", result);
         Ok(result)
     }
+}
+
+fn escape_single_quote(elem: &String) -> String{
+    if elem.starts_with("'") && elem.ends_with("'") {
+        let tmp = elem.as_str();
+        let tmp_slice = &tmp[1..elem.len() -1];
+        let tmp_str = tmp_slice.to_string().replace("'","''");
+        return String::from("'") + tmp_str.as_str() + "'";
+     }
+    return elem.to_string();
 }

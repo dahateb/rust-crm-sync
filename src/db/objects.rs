@@ -1,5 +1,4 @@
 use serde_json;
-use serde_json::value::Value;
 use salesforce::objects::Field;
 
 pub struct ObjectConfig {

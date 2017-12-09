@@ -159,16 +159,27 @@ impl Sync {
         let item = & sf_objects[index as usize];
         println!("selected object: {}", item.name);
         let describe = self.salesforce.describe_object(&item.name).unwrap();
-        let all_fields: String  = describe.fields.iter()
-        .map(|field| field.name.clone())
-        .fold(String::new(),|field_string, field_name| field_string + "\n" + field_name.as_str());
-        println!("{}", all_fields);
+        //let all_fields: String  = describe.fields.iter()
+        //.map(|field| field.name.clone())
+        //.fold(String::new(),|field_string, field_name| field_string + "\n" + field_name.as_str());
+        //println!("{}", all_fields);
         self.db.save_config_data(&describe);
         self.db.create_object_table(&item.name, &describe.fields);
-        let wrapper = self.salesforce.get_records_from_describe(&describe, &item.name);
-        let row_count = self.db.populate(&wrapper.unwrap());
-        println!("Synched {} rows", row_count.unwrap());
-        
+        let wrapper = self.salesforce.get_records_from_describe(&describe, &item.name).unwrap();
+        let mut row_count = 0;
+        row_count += self.db.populate(&wrapper).unwrap();
+        println!("Synched {} rows", row_count);
+        let mut next_wrapper_opt = self.salesforce.get_next_records(&describe, &wrapper);
+        while let Some(next_wrapper) = next_wrapper_opt {
+            row_count += self.db.populate(&next_wrapper).unwrap();
+            println!("Synched {} rows", row_count);
+            if !next_wrapper.done {
+                println!("Next Path: {}", next_wrapper.next_url);
+            } else {
+                println!("Done: {} rows", row_count);
+            }
+            next_wrapper_opt = self.salesforce.get_next_records(&describe, &next_wrapper);
+        }
     }
 
     fn delete_object(&self) {

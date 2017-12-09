@@ -64,7 +64,7 @@ impl Salesforce {
             object_config.name,
             date_diff.format("%Y-%m-%dT%H:%M:%SZ").to_string()
         );
-        println!("{}",query);
+        //println!("{}",query);
         let req_builder = |uri: &String| {
             format!(
                 "{}/services/data/v40.0/query/?q={}", 
@@ -73,6 +73,7 @@ impl Salesforce {
             )
         };
         let posted_str = self.client.get_resource(req_builder).unwrap();
+        //println!("{}",posted_str);
         let v: Value = serde_json::from_str(posted_str.as_str()).unwrap();
         if !v["records"].is_array() {
             return Err("Error fetching data".to_owned());
@@ -90,7 +91,7 @@ impl Salesforce {
             all_fields.join(","),
             object_name
         );
-        println!("{}",query);
+        //println!("{}",query);
         let req_builder = |uri: &String| {
             format!(
                 "{}/services/data/v40.0/query/?q={}", 
@@ -98,8 +99,34 @@ impl Salesforce {
                 query
             )
         };
-        let posted_str = self.client.get_resource(req_builder).unwrap();
+        let posted_str = try!(self.client.get_resource(req_builder)
+                                        .map_err(|err| err.to_string()));
+        //println!("{}",posted_str);
         let v: Value = serde_json::from_str(posted_str.as_str()).unwrap();
         Ok(SObjectRowResultWrapper::new(&describe.name, &describe.fields, v))
     } 
+
+    pub fn get_next_records(&self, 
+                            describe: &SObjectDescribe, 
+                            wrapper: &SObjectRowResultWrapper) 
+        -> Option<SObjectRowResultWrapper> {
+        if wrapper.done {
+            return None;
+        }
+        let req_builder = |uri: &String| {
+            format!("{}{}", uri, wrapper.next_url)
+        };
+        let posted_str = self.client.get_resource(req_builder)
+                                    .map_err(|err| err.to_string());
+        match posted_str {
+            Ok(res) => {
+                let result: Value = serde_json::from_str(res.as_str()).unwrap();
+                return Some(SObjectRowResultWrapper::new(&describe.name, &describe.fields, result))
+            },
+            Err(str) => {
+                return None;
+            }
+        }                            
+                                               
+    }
 }

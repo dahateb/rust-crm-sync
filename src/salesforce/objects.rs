@@ -40,13 +40,15 @@ pub struct Field {
 
 pub struct SObjectRowResultWrapper {
     pub rows: HashMap<String, (Vec<String>, Vec<String>)>,
-    pub object_name: String
+    pub object_name: String,
+    pub next_url: String,
+    pub done: bool
 }
 
 impl SObjectRowResultWrapper {
 
-    pub fn new(name: &String, fields: &Vec<Field>, rows: Value) -> SObjectRowResultWrapper {
-        let rows_raw =  rows["records"].as_array().unwrap();
+    pub fn new(name: &String, fields: &Vec<Field>, describe_result: Value) -> SObjectRowResultWrapper {
+        let rows_raw =  describe_result["records"].as_array().unwrap();
         let mut result: HashMap<String, (Vec<String>, Vec<String>)> = HashMap::new();
         for row in rows_raw {
             let mut field_names: Vec<String> = Vec::new();
@@ -81,7 +83,9 @@ impl SObjectRowResultWrapper {
         }    
         SObjectRowResultWrapper {
             rows: result,
-            object_name: name.clone()
+            object_name: name.clone(),
+            next_url: describe_result["nextRecordsUrl"].as_str().unwrap_or("").to_string(),
+            done: describe_result["done"].as_bool().unwrap_or(false)
         }
     }
 }

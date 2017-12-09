@@ -21,7 +21,7 @@ impl ExecuterInner {
         let objects : Vec<ObjectConfig> = self.db.get_selected_objects(1).unwrap();
         for i in 0.. objects.len() {
             let fields = objects[i].get_field_names();
-            println!("{} {} {:?}", i+1, objects[i].name, fields);
+            println!("{} {} {:?}", i+1, objects[i].name, fields.len());
             let row_result = self.salesforce.get_last_updated_records(&objects[i],1).unwrap();
             println!("num rows to synch: {}", row_result.rows.len());
             let result = self.db.upsert_object_rows( &row_result)
