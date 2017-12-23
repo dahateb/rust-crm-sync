@@ -17,6 +17,7 @@ const STATE_LIST_OBJECTS: u8 = 52;
 const STATE_SELECTED_OBJECTS: u8 = 53;
 const STATE_START_SYNC: u8 = 49;
 const STATE_STOP_SYNC: u8 = 50;
+const STATE_SYNC_STATUS: u8 = 51;
 
 pub mod executer;
 pub mod mappings;
@@ -67,6 +68,7 @@ impl Sync {
                 Sync {level: STATE_SETUP, command: STATE_SELECTED_OBJECTS, ..} => self.show_selected_objects(),
                 Sync {level: STATE_SYNC, command: STATE_START_SYNC, ..} => self.start_sync(),
                 Sync {level: STATE_SYNC, command: STATE_STOP_SYNC, ..} => self.stop_sync(),
+                Sync {level: STATE_SYNC, command: STATE_SYNC_STATUS, ..} => self.show_sync_status(),
                 Sync {level: STATE_START, command: STATE_EXIT, ..} => {
                     println!("Exiting ...");
                     break;
@@ -119,14 +121,22 @@ impl Sync {
         println!("Synch:");
         println!("1. Start Synch");
         println!("2. Stop Synch");
+        println!("3. Show Status");
     }
 
     fn start_sync(&mut  self) {
+        println!("Starting ... ");
         self.executer.start_sync();
     }
 
-    fn stop_sync(& self) {
+    fn stop_sync(&mut self) {
+        println!("Stopping ... ");
         self.executer.stop_sync();
+    }
+
+    fn show_sync_status(& self) {
+        println!("Status: ");
+        self.executer.show_status();
     }
 
     fn list(& self) {
