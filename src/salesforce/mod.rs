@@ -2,7 +2,7 @@ use std::str::{self};
 use std::ops::Sub;
 use serde_json::{self,Value};
 use config::{SalesforceConfig};
-use self::objects::{SObject, SObjectList, SObjectDescribe, SObjectRowResultWrapper};
+use self::objects::{SObject, SObjectList, SObjectDescribe, SObjectConfiguration, SObjectRowResultWrapper};
 use chrono::prelude::*;
 use time::Duration;
 
@@ -81,9 +81,9 @@ impl Salesforce {
         Ok(SObjectRowResultWrapper::new(&object_config.name, &object_config.fields, v))
     }
 
-    pub fn get_records_from_describe(&self, describe: &SObjectDescribe, object_name: &String ) 
+    pub fn get_records_from_describe(&self, describe: &SObjectConfiguration, object_name: &String ) 
                                     -> Result<SObjectRowResultWrapper, String> {
-        let all_fields: Vec<String>  = describe.fields.iter()
+        let all_fields: Vec<String>  = describe.get_fields().iter()
         .map(|field| field.name.clone())
         .collect();
         let query = format!(
@@ -103,11 +103,11 @@ impl Salesforce {
                                         .map_err(|err| err.to_string()));
         //println!("{}",posted_str);
         let v: Value = serde_json::from_str(posted_str.as_str()).unwrap();
-        Ok(SObjectRowResultWrapper::new(&describe.name, &describe.fields, v))
+        Ok(SObjectRowResultWrapper::new(&describe.get_name(), &describe.get_fields(), v))
     } 
 
     pub fn get_next_records(&self, 
-                            describe: &SObjectDescribe, 
+                            describe: &SObjectConfiguration, 
                             wrapper: &SObjectRowResultWrapper) 
         -> Option<SObjectRowResultWrapper> {
         if wrapper.done {
@@ -121,7 +121,13 @@ impl Salesforce {
         match posted_str {
             Ok(res) => {
                 let result: Value = serde_json::from_str(res.as_str()).unwrap();
-                return Some(SObjectRowResultWrapper::new(&describe.name, &describe.fields, result))
+                return Some(
+                        SObjectRowResultWrapper::new(
+                            &describe.get_name(), 
+                            &describe.get_fields(), 
+                            result
+                        )
+                    )
             },
             Err(str) => {
                 return None;

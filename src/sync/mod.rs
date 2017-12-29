@@ -169,10 +169,6 @@ impl Sync {
         let item = & sf_objects[index as usize];
         println!("selected object: {}", item.name);
         let describe = self.salesforce.describe_object(&item.name).unwrap();
-        //let all_fields: String  = describe.fields.iter()
-        //.map(|field| field.name.clone())
-        //.fold(String::new(),|field_string, field_name| field_string + "\n" + field_name.as_str());
-        //println!("{}", all_fields);
         self.db.save_config_data(&describe);
         self.db.create_object_table(&item.name, &describe.fields);
         let wrapper = self.salesforce.get_records_from_describe(&describe, &item.name).unwrap();

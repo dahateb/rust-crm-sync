@@ -1,5 +1,5 @@
 use serde_json;
-use salesforce::objects::Field;
+use salesforce::objects::{Field, SObjectConfiguration};
 
 pub struct ObjectConfig {
     pub id: i32,
@@ -24,5 +24,15 @@ impl ObjectConfig {
         self.fields.iter().map(|field|{
             field.name.clone()
         }).collect()
+    }
+}
+
+impl SObjectConfiguration for ObjectConfig {
+    fn get_name(&self) -> &String{
+        &self.name
+    }
+
+    fn get_fields(&self) -> &Vec<Field> {
+        &self.fields
     }
 }

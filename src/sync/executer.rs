@@ -26,6 +26,19 @@ impl ExecuterInner {
             let _ = sender.send(format!("num rows to synch: {}", row_result.rows.len()));
             let result = self.db.upsert_object_rows( &row_result)
                                 .map_err(|err| println!("{}", err));
+            let mut row_count = result.unwrap();
+            let mut next_wrapper_opt = self.salesforce.get_next_records(&objects[i], &row_result);
+            while let Some(next_wrapper) = next_wrapper_opt {
+                row_count += self.db.populate(&next_wrapper).unwrap();
+                let _ = sender.send(format!("Synched {} rows", row_count));
+                if !next_wrapper.done {
+                    let _ = sender.send(format!("Next Path: {}", next_wrapper.next_url));
+                } else {
+                    let _ = sender.send(format!("Done: {} rows", row_count));
+                }
+                next_wrapper_opt = self.salesforce.get_next_records(&objects[i], &next_wrapper);
+            }
+
             let _ = sender.send(format!("{}", result.unwrap()));
             self.db.update_last_sync_time(objects[i].id);
         }        

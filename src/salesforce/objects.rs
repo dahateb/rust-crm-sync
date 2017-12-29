@@ -28,6 +28,21 @@ pub struct SObjectDescribe {
     pub fields: Vec<Field>
 }
 
+pub trait SObjectConfiguration {
+    fn get_name(&self) -> &String;
+    fn get_fields(&self) -> &Vec<Field>;
+}
+
+impl SObjectConfiguration for SObjectDescribe {
+    fn get_name(&self) -> &String{
+        &self.name
+    }
+
+    fn get_fields(&self) -> &Vec<Field>{
+        &self.fields
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Field {
     pub name: String,

@@ -155,10 +155,10 @@ impl Db {
         query.push_str(" WHERE sfid ='");
         query.push_str(id);
         query.push_str("'");
-        println!("{}", query);
+        // println!("{}", query);
         let conn = self.pool.get().unwrap();
         let result = try!(conn.execute(query.as_str(),&[]).map_err(|err| err.to_string()));
-        println!("{:?}", result);
+        // println!("{:?}", result);
         Ok(result)
     }
 }
