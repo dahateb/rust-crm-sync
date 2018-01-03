@@ -53,10 +53,19 @@ impl Db {
         query += " created timestamp,";
         query += " updated timestamp";
         query += ")";
-        println!("{}", query);
+        // println!("{}", query);
         let conn = self.pool.get().unwrap();
-        conn.execute(query.as_str(),&[])
-        .unwrap();
+        conn.execute(query.as_str(),&[]).unwrap();
+    }
+
+    pub fn add_channel_trigger(&self, object_name: &String) {
+        let query = format!("CREATE TRIGGER {}_notify
+         AFTER INSERT OR UPDATE 
+         ON salesforce.{}
+         FOR EACH ROW
+         EXECUTE PROCEDURE salesforce.notify_change();", object_name, object_name);
+         let conn = self.pool.get().unwrap();
+         conn.execute(query.as_str(),&[]).unwrap();
     }
 
     pub fn get_selected_objects(&self, interval: i16) -> Result<Vec<ObjectConfig>, String> {
@@ -134,6 +143,7 @@ impl Db {
         );
         //println!("{}", query);
         let conn = self.pool.get().unwrap();
+        //add channel lock flag here
         let result = try!(conn.execute(query.as_str(),&[]).map_err(|err| err.to_string()));
         //println!("{:?}", result);
         Ok(result)
@@ -157,6 +167,7 @@ impl Db {
         query.push_str("'");
         // println!("{}", query);
         let conn = self.pool.get().unwrap();
+        //add channel lock flag here
         let result = try!(conn.execute(query.as_str(),&[]).map_err(|err| err.to_string()));
         // println!("{:?}", result);
         Ok(result)

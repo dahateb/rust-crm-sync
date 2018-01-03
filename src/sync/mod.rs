@@ -171,6 +171,7 @@ impl Sync {
         let describe = self.salesforce.describe_object(&item.name).unwrap();
         self.db.save_config_data(&describe);
         self.db.create_object_table(&item.name, &describe.fields);
+        self.db.add_channel_trigger(&item.name);
         let wrapper = self.salesforce.get_records_from_describe(&describe, &item.name).unwrap();
         let mut row_count = 0;
         row_count += self.db.populate(&wrapper).unwrap();
