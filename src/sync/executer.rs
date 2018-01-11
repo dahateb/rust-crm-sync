@@ -12,20 +12,23 @@ struct ExecuterInner {
     db: Arc<Db>,
     salesforce: Arc<Salesforce>,
     synch_switch: Arc<Mutex<bool>>,
-    config: &'static SyncConfig
+    config: &'static SyncConfig,
 }
 
 impl ExecuterInner {
-    pub fn execute(& self, sender: Sender<String>) {
+    pub fn execute(&self, sender: Sender<String>) {
         //println!("executing.... ");
-        let objects : Vec<ObjectConfig> = self.db.get_selected_objects(1).unwrap();
-        for i in 0.. objects.len() {
+        let objects: Vec<ObjectConfig> = self.db.get_selected_objects(1).unwrap();
+        for i in 0..objects.len() {
             let fields = objects[i].get_field_names();
-            let _ = sender.send(format!("{} {} {:?}", i+1, objects[i].name, fields.len()));
-            let row_result = self.salesforce.get_last_updated_records(&objects[i],1).unwrap();
+            let _ = sender.send(format!("{} {} {:?}", i + 1, objects[i].name, fields.len()));
+            let row_result = self.salesforce
+                .get_last_updated_records(&objects[i], 1)
+                .unwrap();
             let _ = sender.send(format!("num rows to synch: {}", row_result.rows.len()));
-            let result = self.db.upsert_object_rows( &row_result)
-                                .map_err(|err| println!("{}", err));
+            let result = self.db
+                .upsert_object_rows(&row_result)
+                .map_err(|err| println!("{}", err));
             let mut row_count = result.unwrap();
             let mut next_wrapper_opt = self.salesforce.get_next_records(&objects[i], &row_result);
             while let Some(next_wrapper) = next_wrapper_opt {
@@ -41,13 +44,13 @@ impl ExecuterInner {
 
             let _ = sender.send(format!("{}", result.unwrap()));
             self.db.update_last_sync_time(objects[i].id);
-        }        
+        }
     }
 }
 
 pub struct Executer {
     inner: Arc<ExecuterInner>,
-    receiver: Option<Receiver<String>>
+    receiver: Option<Receiver<String>>,
 }
 
 impl Executer {
@@ -56,11 +59,11 @@ impl Executer {
             db: db,
             salesforce: salesforce,
             synch_switch: Arc::new(Mutex::new(false)),
-            config: config
+            config: config,
         };
         Executer {
             inner: Arc::new(inner),
-            receiver: None
+            receiver: None,
         }
     }
 
@@ -69,16 +72,18 @@ impl Executer {
         *local_self.synch_switch.lock().unwrap() = true;
         let (send, recv) = channel::<String>();
         self.receiver = Some(recv);
-        thread::spawn(move || {            
+        thread::spawn(move || {
             for i in 1.. {
                 local_self.execute(send.clone());
                 {
                     let data = local_self.synch_switch.lock().unwrap();
                     if !*data {
                         let _ = send.send(format!("Stopped Thread after {} loops", i));
-                        return 0;   
+                        return 0;
                     }
-                    let _ = send.send(format!("hi number {} from the spawned thread! state: {}", i, *data));
+                    let _ = send.send(format!("hi number {} from the spawned thread! state: {}",
+                                              i,
+                                              *data));
                 }
                 sleep(Duration::from_millis(local_self.config.timeout));
             }
@@ -92,7 +97,7 @@ impl Executer {
         self.receiver = None;
     }
 
-    pub fn show_status(& self) {
+    pub fn show_status(&self) {
         if self.receiver.is_none() {
             println!("No Sync Running");
             return;

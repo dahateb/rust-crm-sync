@@ -17,6 +17,6 @@ lazy_static! {
     };
 }
 
-pub fn sf_type_mapping(field_type: &String) -> Result<&'static str, String>{
+pub fn sf_type_mapping(field_type: &String) -> Result<&'static str, String> {
     Ok(TYPEMAP.get(field_type).unwrap_or(&DEFAULT))
 }
