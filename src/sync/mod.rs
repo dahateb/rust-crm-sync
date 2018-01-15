@@ -1,3 +1,8 @@
+pub mod executer;
+pub mod setup;
+pub mod executer_sf;
+pub mod executer_db;
+
 use std::io;
 use config::Config;
 use salesforce::Salesforce;
@@ -5,6 +10,8 @@ use std::string::String;
 use std::str::FromStr;
 use db::Db;
 use std::sync::Arc;
+use sync::executer::Executer;
+use sync::setup::Setup;
 
 const STATE_START: u8 = 0;
 const STATE_SETUP: u8 = 49;
@@ -15,14 +22,6 @@ const STATE_SELECTED_OBJECTS: u8 = 53;
 const STATE_START_SYNC: u8 = 49;
 const STATE_STOP_SYNC: u8 = 50;
 const STATE_SYNC_STATUS: u8 = 51;
-
-pub mod executer;
-pub mod setup;
-pub mod executer_sf;
-pub mod executer_db;
-
-use sync::executer::Executer;
-use sync::setup::Setup;
 
 pub struct Sync {
     level: u8,

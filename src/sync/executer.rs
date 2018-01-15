@@ -1,5 +1,4 @@
 use std::sync::{Arc};
-use std::borrow::Borrow;
 use db::Db;
 use salesforce::Salesforce;
 use std::thread::{self, sleep};
@@ -28,14 +27,13 @@ impl Executer {
         let (send, recv) = channel::<String>();
         self.receiver = Some(recv);
         for val in self.inners.iter() {
-            {
-                let local_self = convert(val.borrow()).unwrap();      
-                local_self.start();
+            {     
+                val.convert().start();
             }
             let val = val.clone();
             let send = send.clone();
             thread::spawn(move ||{
-                let local_self = convert(val.borrow()).unwrap();
+                let local_self = val.convert();
                 for i in 1.. {  
                     local_self.execute(send.clone());
                     {
@@ -60,8 +58,7 @@ impl Executer {
 
     pub fn stop_sync(&mut self) {
         for val in self.inners.iter() {
-            let local_self = convert(val.borrow()).unwrap();      
-            local_self.stop();
+            val.convert().stop();
         }
         self.receiver = None;
     }
@@ -80,15 +77,10 @@ impl Executer {
 }
 
 pub trait ExecuterInner {
-
     fn execute(&self, Sender<String>);
-
     fn get_timeout(&self) -> u64;
-
     fn start(&self);
-
     fn is_running(&self) -> bool;
-
     fn stop(&self);
 }
 
@@ -97,10 +89,11 @@ enum EIW {
     DB(ExecuterInnerDB)
 }
 
-fn convert(e: &EIW) -> Option<&ExecuterInner>  {
-    match e {
-        &EIW::SF(ref ei) => return Some(ei),
-        &EIW::DB(ref ei) => return Some(ei),
-        _ => None
+impl EIW {
+    fn convert(&self) -> &ExecuterInner  {
+        match self {
+            &EIW::SF(ref ei) => return ei,
+            &EIW::DB(ref ei) => return ei,
+        }
     }
 }
