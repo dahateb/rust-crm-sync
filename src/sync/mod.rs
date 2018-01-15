@@ -19,6 +19,7 @@ const STATE_SYNC_STATUS: u8 = 51;
 pub mod executer;
 pub mod setup;
 pub mod executer_sf;
+pub mod executer_db;
 
 use sync::executer::Executer;
 use sync::setup::Setup;
