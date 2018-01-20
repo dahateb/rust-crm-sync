@@ -2,8 +2,10 @@ use postgres::rows::Rows;
 use salesforce::objects::{SObjectDescribe, Field, SObjectRowResultWrapper};
 use serde_json;
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
-use r2d2::{Config, Pool};
+use r2d2::{Pool};
+use r2d2::config::Builder;
 use config::DbConfig;
+use fallible_iterator::FallibleIterator;
 
 pub mod mapping;
 pub mod objects;
@@ -12,12 +14,12 @@ use db::objects::ObjectConfig;
 
 #[derive(Debug)]
 pub struct Db {
-    pool: Pool<PostgresConnectionManager>,
+    pub pool: Pool<PostgresConnectionManager>,
 }
 
 impl Db {
     pub fn new(db_config: &'static DbConfig) -> Db {
-        let config = Config::default();
+        let config = Builder::new().pool_size(1).build();
         let manager = PostgresConnectionManager::new(db_config.url.clone(), TlsMode::None).unwrap();
         let pool = Pool::new(config, manager)
             .map_err(|err| panic!("DB Error: Cannot connect - {}", err.to_string()))
@@ -35,7 +37,7 @@ impl Db {
     pub fn create_object_table(&self, object_name: &String, fields: &Vec<Field>) {
         let mut query = format!("CREATE TABLE salesforce.{}", object_name.to_lowercase());
         query += "(";
-        query += " id SERIAL,";
+        query += " id SERIAL PRIMARY KEY,";
         query += " sfid  varchar(18),";
         for field in fields {
             let field_name = field.name.to_lowercase();
@@ -144,12 +146,9 @@ impl Db {
                             row.0.join(","),
                             row_values.join(","));
         //println!("{}", query);
-        let conn = self.pool.get().unwrap();
-        //add channel lock flag here
-        let result = try!(conn.execute(query.as_str(), &[])
-                              .map_err(|err| err.to_string()));
+        let result = self.query_with_lock(&query, &object_name);
         //println!("{:?}", result);
-        Ok(result)
+        result
     }
 
     fn update(&self,
@@ -169,12 +168,41 @@ impl Db {
         query.push_str(id);
         query.push_str("'");
         // println!("{}", query);
-        let conn = self.pool.get().unwrap();
-        //add channel lock flag here
-        let result = try!(conn.execute(query.as_str(), &[])
-                              .map_err(|err| err.to_string()));
+        let result = self.query_with_lock(&query, &object_name);
         // println!("{:?}", result);
+        result
+    }
+
+    fn query_with_lock(&self, query: &String, object_name: &String) -> Result<u64, String>{
+        //add channel lock flag here
+        let conn = self.pool.get().unwrap();
+        let _ = conn.execute(&format!("SELECT set_config('salesforce.{}_lock','lock', false);", object_name), &[]);
+        let result = try!(conn.execute(&query, &[])
+                              .map_err(|err| err.to_string()));
+        let _ = conn.execute(&format!("SELECT set_config('salesforce.{}_lock','', false);", object_name), &[]);
         Ok(result)
+    }
+
+    pub fn get_notifications(&self) -> Vec<String>{
+        let mut result = vec!();
+        let conn = self.pool.get().unwrap();
+        let _ = conn.query("", &[]); 
+        let notifications = conn.notifications();
+        let mut iter = notifications.iter();
+        while let Some(note) = iter.next().unwrap() {
+            result.push(note.payload);
+        }
+        result
+    }
+
+    pub fn toggle_listen(&self, listening: bool) {
+        let conn = self.pool.get().unwrap();
+        if listening {
+            let _ = conn.execute("LISTEN salesforce_data", &[]);
+        }else {
+            let _ = conn.execute("UNLISTEN salesforce_data", &[]);
+        }
+        
     }
 }
 

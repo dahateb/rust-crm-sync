@@ -6,6 +6,7 @@ extern crate time;
 extern crate postgres;
 extern crate r2d2;
 extern crate r2d2_postgres;
+extern crate fallible_iterator;
 
 #[macro_use]
 extern crate lazy_static;

@@ -4,7 +4,8 @@ use salesforce::Salesforce;
 use config::SyncConfig;
 use std::sync::mpsc::{Sender};
 use sync::executer::ExecuterInner;
-
+use r2d2_postgres::{TlsMode, PostgresConnectionManager};
+use r2d2::{Config, Pool, PooledConnection};
 
 pub struct ExecuterInnerDB {
     db: Arc<Db>,
@@ -28,9 +29,14 @@ impl ExecuterInnerDB {
 impl ExecuterInner for ExecuterInnerDB{
     fn execute(&self, sender: Sender<String>) {
         let _ = sender.send("Executer DB".to_owned());
+        for note in self.db.get_notifications().iter() {
+            println!("{}",note);
+            let _ = sender.send(note.clone());
+        }
     }
     
     fn start(&self) {
+        self.db.toggle_listen(true);
         *self.synch_switch.lock().unwrap() = true;
     }
 
@@ -39,6 +45,7 @@ impl ExecuterInner for ExecuterInnerDB{
     }
 
     fn stop(&self) {
+        self.db.toggle_listen(true);
         *self.synch_switch.lock().unwrap() = false;
     }
 
