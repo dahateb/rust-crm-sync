@@ -9,6 +9,7 @@ lazy_static! {
         m.insert("string".to_owned(), "varchar");
         m.insert("picklist".to_owned(), "varchar");
         m.insert("double".to_owned(), "double precision");
+        m.insert("currency".to_owned(), "double precision");
         m.insert("int".to_owned(), "integer");
         m.insert("datetime".to_owned(), "timestamp");
         m.insert("date".to_owned(), "timestamp");
@@ -17,6 +18,15 @@ lazy_static! {
     };
 }
 
-pub fn sf_type_mapping(field_type: &String) -> Result<&'static str, String> {
-    Ok(TYPEMAP.get(field_type).unwrap_or(&DEFAULT))
+pub fn sf_type_mapping(field_type: &String, length: u32) -> Result<String, String> {
+    let db_type = TYPEMAP.get(field_type).unwrap_or(&DEFAULT);
+    match *db_type {
+        "varchar" => {
+            if length > 255 {
+               return  Ok(String::from("text"));
+            }
+            Ok(format!("{}({})",db_type, length))
+        },
+        _ => Ok(db_type.to_string())
+    }
 }

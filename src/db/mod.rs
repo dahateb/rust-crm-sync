@@ -1,3 +1,7 @@
+pub mod mapping;
+pub mod objects;
+pub mod query;
+
 use postgres::rows::Rows;
 use salesforce::objects::{SObjectDescribe, Field, SObjectRowResultWrapper};
 use serde_json;
@@ -6,15 +10,12 @@ use r2d2::{Pool};
 use r2d2::config::Builder;
 use config::DbConfig;
 use fallible_iterator::FallibleIterator;
-
-pub mod mapping;
-pub mod objects;
-
+use db::query::{CreateQueryBuilder, UpdateQueryBuilder, escape_single_quote};
 use db::objects::ObjectConfig;
 
 #[derive(Debug)]
 pub struct Db {
-    pub pool: Pool<PostgresConnectionManager>,
+    pub pool: Pool<PostgresConnectionManager>
 }
 
 impl Db {
@@ -24,7 +25,7 @@ impl Db {
         let pool = Pool::new(config, manager)
             .map_err(|err| panic!("DB Error: Cannot connect - {}", err.to_string()))
             .unwrap();
-        Db { pool: pool }
+        Db { pool: pool}
     }
 
     pub fn save_config_data(&self, item: &SObjectDescribe) {
@@ -35,26 +36,21 @@ impl Db {
     }
 
     pub fn create_object_table(&self, object_name: &String, fields: &Vec<Field>) {
-        let mut query = format!("CREATE TABLE salesforce.{}", object_name.to_lowercase());
-        query += "(";
-        query += " id SERIAL PRIMARY KEY,";
-        query += " sfid  varchar(18),";
+        let table_name = format!("salesforce.{}",object_name);
+        let mut query_builder = CreateQueryBuilder::new(&table_name);
+        query_builder.add_field("id", "SERIAL PRIMARY KEY".to_string());
+        query_builder.add_field( "sfid", "varchar(18)".to_string());
         for field in fields {
-            let field_name = field.name.to_lowercase();
-            let sf_type = &field.sf_type;
-            let mut mapping = mapping::sf_type_mapping(sf_type).unwrap();
-            if field_name == "id" {
+            if field.name == "Id" || field.sf_type == "address" {
                 continue;
             }
-            if mapping == "varchar" && field.length > 255 {
-                mapping = "text"
-            }
-            query += &format!("{} {},", field_name, mapping);
+            let mapping = mapping::sf_type_mapping(&field.sf_type, field.length).unwrap();
+            query_builder.add_field( field.name.as_str(), mapping);
         }
-
-        query += " created timestamp,";
-        query += " updated timestamp";
-        query += ")";
+        query_builder.add_field("created", "timestamp".to_string());
+        query_builder.add_field("updated", "timestamp".to_string());
+        let query = query_builder.build();
+        
         // println!("{}", query);
         let conn = self.pool.get().unwrap();
         conn.execute(query.as_str(), &[]).unwrap();
@@ -156,17 +152,13 @@ impl Db {
               object_name: &String,
               row: &(Vec<String>, Vec<String>))
               -> Result<u64, String> {
-        let mut query = String::from("UPDATE salesforce.") + &object_name.to_lowercase() + " ";
-        query.push_str("SET ");
-        let mut fields: Vec<String> = Vec::new();
+        let table_name = format!("salesforce.{}",object_name);
+        let mut builder = UpdateQueryBuilder::new(&table_name);
         for i in 0..row.0.len() {
-            let field = [row.0[i].clone(), escape_single_quote(&row.1[i].clone())].join("=");
-            fields.push(field);
+            builder.add_field(&row.0[i], &row.1[i]);
         }
-        query.push_str(&fields.join(","));
-        query.push_str(" WHERE sfid ='");
-        query.push_str(id);
-        query.push_str("'");
+        builder.add_and_where("sfid", id, "=".to_string());
+        let query = builder.build();
         // println!("{}", query);
         let result = self.query_with_lock(&query, &object_name);
         // println!("{:?}", result);
@@ -204,14 +196,4 @@ impl Db {
         }
         
     }
-}
-
-fn escape_single_quote(elem: &String) -> String {
-    if elem.starts_with("'") && elem.ends_with("'") {
-        let tmp = elem.as_str();
-        let tmp_slice = &tmp[1..elem.len() - 1];
-        let tmp_str = tmp_slice.to_string().replace("'", "''");
-        return String::from("'") + tmp_str.as_str() + "'";
-    }
-    return elem.to_string();
 }
