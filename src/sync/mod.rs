@@ -1,7 +1,6 @@
 pub mod executer;
 pub mod setup;
-pub mod executer_sf;
-pub mod executer_db;
+pub mod logger;
 
 use std::io;
 use config::Config;
@@ -12,6 +11,8 @@ use db::Db;
 use std::sync::Arc;
 use sync::executer::Executer;
 use sync::setup::Setup;
+use std::cell::RefCell;
+use sync::logger::Logger;
 
 const STATE_START: u8 = 0;
 const STATE_SETUP: u8 = 49;
@@ -29,6 +30,7 @@ pub struct Sync {
     input: String,
     executer: Executer,
     setup: Setup,
+    logger: RefCell<Logger>,
     config: &'static Config,
 }
 
@@ -44,6 +46,7 @@ impl Sync {
             input: String::new(),
             executer: Executer::new(db_arc.clone(), sf_arc.clone(), &config.sync),
             setup: Setup::new(db_arc, sf_arc),
+            logger: RefCell::new(Logger::new()),
             config: config,
         }
     }
@@ -60,7 +63,11 @@ impl Sync {
                 Sync {level: STATE_SETUP, command: STATE_SELECTED_OBJECTS, ..} => self.show_selected_objects(),
                 Sync {level: STATE_SYNC, command: STATE_START_SYNC, ..} => self.start_sync(),
                 Sync {level: STATE_SYNC, command: STATE_STOP_SYNC, ..} => self.stop_sync(),
-                Sync {level: STATE_SYNC, command: STATE_SYNC_STATUS, ..} => self.show_sync_status(),
+                Sync {level: STATE_SYNC, command: STATE_SYNC_STATUS, ..} => self.start_show_log(),
+                Sync {level: STATE_SYNC_STATUS, ..} => {
+                    self.stop_show_log();
+                    self.command = STATE_START;
+                }
                 Sync {level: STATE_START, command: STATE_EXIT, ..} => {
                     println!("Exiting ...");
                     break;
@@ -127,9 +134,24 @@ impl Sync {
         self.executer.stop_sync();
     }
 
-    fn show_sync_status(&self) {
+    fn start_show_log(&self) {
         println!("Status: ");
-        self.executer.show_status();
+        let opt = self.executer.receiver.as_ref();
+        match opt {
+            Some(recv) => {
+                let mut logger = self.logger.borrow_mut();
+                logger.add_receiver(Some(recv.clone()));
+                logger.start();
+            },
+            None => {
+                println!("Sync not running");
+            }
+        }
+    }
+
+    fn stop_show_log(&mut self) {
+        let logger = self.logger.borrow();
+        logger.stop();
     }
 
     fn list(&self) {

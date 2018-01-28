@@ -13,9 +13,10 @@ use fallible_iterator::FallibleIterator;
 use db::query::{CreateQueryBuilder, UpdateQueryBuilder, escape_single_quote};
 use db::objects::ObjectConfig;
 
-#[derive(Debug)]
+
 pub struct Db {
-    pub pool: Pool<PostgresConnectionManager>
+    pub pool: Pool<PostgresConnectionManager>,
+    config: &'static DbConfig
 }
 
 impl Db {
@@ -25,7 +26,10 @@ impl Db {
         let pool = Pool::new(config, manager)
             .map_err(|err| panic!("DB Error: Cannot connect - {}", err.to_string()))
             .unwrap();
-        Db { pool: pool}
+        Db { 
+            pool: pool,
+            config: db_config
+        }
     }
 
     pub fn save_config_data(&self, item: &SObjectDescribe) {
@@ -196,4 +200,10 @@ impl Db {
         }
         
     }
+}
+
+impl Clone for Db {
+     fn clone(&self) -> Db {
+        Db::new(self.config)
+     }
 }

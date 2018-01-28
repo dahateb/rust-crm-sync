@@ -30,7 +30,6 @@ impl ExecuterInner for ExecuterInnerDB{
     fn execute(&self, sender: Sender<String>) {
         let _ = sender.send("Executer DB".to_owned());
         for note in self.db.get_notifications().iter() {
-            println!("{}",note);
             let _ = sender.send(note.clone());
         }
     }
