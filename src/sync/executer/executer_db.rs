@@ -3,6 +3,7 @@ use db::Db;
 use salesforce::Salesforce;
 use config::SyncConfig;
 use std::sync::mpsc::{Sender};
+use std::collections::HashMap;
 use sync::executer::ExecuterInner;
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use r2d2::{Config, Pool, PooledConnection};
@@ -29,8 +30,23 @@ impl ExecuterInnerDB {
 impl ExecuterInner for ExecuterInnerDB{
     fn execute(&self, sender: Sender<String>) {
         let _ = sender.send("Executer DB".to_owned());
+        let mut records_map: HashMap<String, Vec<i32>> = HashMap::new();
         for note in self.db.get_notifications().iter() {
+            let object: Vec<&str> = note.split("_").collect();
             let _ = sender.send(note.clone());
+            let name = object[0].to_owned();
+            let _name = name.clone();
+            let id = object[1].parse::<i32>().unwrap();
+            if !records_map.contains_key(&name){
+                records_map.insert(name,vec!() );
+            }
+            records_map.get_mut(&_name).unwrap().push(id);
+        }
+        for key in records_map.keys() {
+            let records = self.db.get_object_data_by_id(&key, records_map.get::<str>(&key).unwrap());
+            for rec in records{
+                println!("{}", rec.to_json());
+            }
         }
     }
     

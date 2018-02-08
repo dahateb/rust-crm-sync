@@ -43,7 +43,7 @@ impl SObjectConfiguration for SObjectDescribe {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Field {
     pub name: String,
     pub length: u32,

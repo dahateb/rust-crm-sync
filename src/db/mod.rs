@@ -1,6 +1,7 @@
 pub mod mapping;
 pub mod objects;
 pub mod query;
+pub mod record;
 
 use postgres::rows::Rows;
 use salesforce::objects::{SObjectDescribe, Field, SObjectRowResultWrapper};
@@ -12,7 +13,7 @@ use config::DbConfig;
 use fallible_iterator::FallibleIterator;
 use db::query::{CreateQueryBuilder, UpdateQueryBuilder, escape_single_quote};
 use db::objects::ObjectConfig;
-
+use db::record::Record;
 
 pub struct Db {
     pub pool: Pool<PostgresConnectionManager>,
@@ -35,8 +36,8 @@ impl Db {
     pub fn save_config_data(&self, item: &SObjectDescribe) {
         let field_json = serde_json::to_string(&item.fields).unwrap();
         let conn = self.pool.get().unwrap();
-        conn.execute("INSERT INTO config.objects (name, fields, last_sync_time) VALUES ($1, $2, now())",
-                 &[&item.name, &field_json]).unwrap();
+        conn.execute("INSERT INTO config.objects (name, db_name, fields, last_sync_time) VALUES ($1, $2, $3, now())",
+                 &[&item.name, &item.name.to_lowercase(), &field_json]).unwrap();
     }
 
     pub fn create_object_table(&self, object_name: &String, fields: &Vec<Field>) {
@@ -90,6 +91,35 @@ impl Db {
                  })
             .collect();
         Ok(result)
+    }
+
+    pub fn get_object_data_by_id(&self, object_name: &String , ids: &Vec<i32>) 
+    -> Vec<Record>{
+        let conn = self.pool.get().unwrap();
+        let query = "SELECT id, db_name, fields FROM config.objects WHERE db_name = $1";
+        let rows = conn.query(query, &[object_name]).unwrap();
+        let row = rows.iter().next().unwrap();
+        let config: ObjectConfig = ObjectConfig::new(row.get(0), row.get(1), ids.len() as u32, row.get(2));
+        let fieldnames = config.get_db_field_names();
+        let mut query = format!("SELECT sfid as id, {} FROM salesforce.{}", fieldnames.join(","), object_name);
+        if ids.len() > 0 {
+            query.push_str(" WHERE id IN(");
+            let mut tmp = vec!();
+            ids.iter().for_each(|id|{
+                tmp.push(format!("{}",id));
+            });
+            query.push_str(tmp.join(",").as_str());
+            query.push_str(")");
+        }
+        let result = conn.query(&query, &[]).unwrap();
+        let mut res = vec!();
+        for row in result.iter() {
+            //println!("{:?}",row);
+            let record = Record::new(&row);
+            //println!("{}",record.get_json());
+            res.push(record);
+        }
+        res
     }
 
     pub fn update_last_sync_time(&self, id: i32) {
