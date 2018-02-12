@@ -23,7 +23,7 @@ impl Client {
     pub fn new(login_data: Option<LoginData>) -> Client {
         Client {
             login_data: login_data,
-            client: ReqClient::new().unwrap(),
+            client: ReqClient::new(),
         }
     }
 
@@ -51,8 +51,8 @@ impl Client {
         params.insert("client_secret", config.client_secret.as_str());
         params.insert("username", config.username.as_str());
         params.insert("password", password.as_str());
-        let mut req = self.client.post(config.uri.as_str()).unwrap();
-        let req = req.form(&params).unwrap().build();
+        let mut req = self.client.post(config.uri.as_str());
+        let req = req.form(&params).build().unwrap();
         let mut response = self.call(req);
         let ld: LoginData = response.json().map_err(|err| println!("{}", err)).unwrap();
         self.login_data = Some(ld);
@@ -71,8 +71,12 @@ impl Client {
         let req = self.build_auth_request(req_builder);
         let mut response = self.call(req);
         let mut result = String::new();
-        let bytes_read = response.read_to_string(&mut result);
+        let _bytes_read = response.read_to_string(&mut result);
         Ok(result)
+    }
+
+    pub fn push_resource(&self) {
+       // self.client;
     }
 
     fn call(&self, req: Request) -> Response {
@@ -82,7 +86,7 @@ impl Client {
             .unwrap();
         if !response.status().is_success() {
             let mut result = String::new();
-            response.read_to_string(&mut result);
+            let _= response.read_to_string(&mut result);
             panic!("{} {}", response.status(), result);
         }
         response
@@ -93,10 +97,10 @@ impl Client {
     {
         let ld = self.login_data.as_ref().unwrap();
         let uri = req_builder(&ld.instance_url);
-        let mut req = self.client.get(uri.as_str()).unwrap();
+        let mut req = self.client.get(uri.as_str());
         let mut headers = Headers::new();
         headers.set(Authorization(Bearer { token: ld.access_token.clone() }));
         req.headers(headers);
-        req.build()
+        req.build().unwrap()
     }
 }

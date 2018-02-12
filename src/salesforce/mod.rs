@@ -111,6 +111,5 @@ impl Salesforce {
                 return None;
             }
         }
-
     }
 }

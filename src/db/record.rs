@@ -16,7 +16,7 @@ enum Value {
 }
 
 pub struct Record {
-    pub id: String,
+    pub id: Option<String>,
     data: HashMap<String,Option<Value>>
 }
 
@@ -24,7 +24,7 @@ impl Record {
 
     pub fn new(row: &Row) -> Record{
         Record{
-            id: row.get(0),
+            id: row.get::<_,Option<String>>(0),
             data: Record::parse_data(row)
         }
     }
@@ -33,7 +33,7 @@ impl Record {
         let mut map = HashMap::new();
         let mut idx = 0;
         for column in row.columns().iter() {
-            //println!("{:?}", column);
+            println!("{:?}", column);
             let value = match column.type_() {
                 &INT4 => {
                     match row.get::<_, Option<i32>>(idx) {

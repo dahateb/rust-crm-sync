@@ -32,7 +32,8 @@ impl ExecuterInner for ExecuterInnerDB{
         let _ = sender.send("Executer DB".to_owned());
         let mut records_map: HashMap<String, Vec<i32>> = HashMap::new();
         for note in self.db.get_notifications().iter() {
-            let object: Vec<&str> = note.split("_").collect();
+            let object: Vec<&str> = note.split("::").collect();
+            //println!("{}",note);
             let _ = sender.send(note.clone());
             let name = object[0].to_owned();
             let _name = name.clone();
@@ -42,6 +43,7 @@ impl ExecuterInner for ExecuterInnerDB{
             }
             records_map.get_mut(&_name).unwrap().push(id);
         }
+        //println!("{:?}", records_map);
         for key in records_map.keys() {
             let records = self.db.get_object_data_by_id(&key, records_map.get::<str>(&key).unwrap());
             for rec in records{

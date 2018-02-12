@@ -94,7 +94,7 @@ impl Db {
     }
 
     pub fn get_object_data_by_id(&self, object_name: &String , ids: &Vec<i32>) 
-    -> Vec<Record>{
+        -> Vec<Record>{
         let conn = self.pool.get().unwrap();
         let query = "SELECT id, db_name, fields FROM config.objects WHERE db_name = $1";
         let rows = conn.query(query, &[object_name]).unwrap();

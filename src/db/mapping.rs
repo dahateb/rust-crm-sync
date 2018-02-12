@@ -10,6 +10,7 @@ lazy_static! {
         m.insert("picklist".to_owned(), "varchar");
         m.insert("double".to_owned(), "double precision");
         m.insert("currency".to_owned(), "double precision");
+        m.insert("percent".to_owned(), "double precision");
         m.insert("int".to_owned(), "integer");
         m.insert("datetime".to_owned(), "timestamp");
         m.insert("date".to_owned(), "timestamp");

@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::cell::RefCell;
 use salesforce::objects::SObject;
 use db::objects::ObjectConfig;
+use std::io::{self, Write};
 
 const ERR_OBJECT_NOT_FOUND: &str = "Object not found";
 const ERR_CACHE_NOT_SETUP: &str = "Cache not setup";
@@ -93,14 +94,19 @@ impl Setup {
             .get_records_from_describe(&describe, &item.name)?;
         let mut row_count = 0;
         row_count += self.db.populate(&wrapper)?;
+        print!(".");
+        io::stdout().flush().unwrap();
         // println!("Synched {} rows", row_count);
         let mut next_wrapper_opt = self.salesforce.get_next_records(&describe, &wrapper);
         while let Some(next_wrapper) = next_wrapper_opt {
             row_count += self.db.populate(&next_wrapper)?;
+            print!(".");
+            io::stdout().flush().unwrap();
             // println!("Synched {} rows", row_count);
             if !next_wrapper.done {
                 // println!("Next Path: {}", next_wrapper.next_url);
             } else {
+                println!("");
                 // println!("Done: {} rows", row_count);
             }
             next_wrapper_opt = self.salesforce.get_next_records(&describe, &next_wrapper);
