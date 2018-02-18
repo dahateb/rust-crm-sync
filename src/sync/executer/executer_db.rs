@@ -5,8 +5,6 @@ use config::SyncConfig;
 use std::sync::mpsc::{Sender};
 use std::collections::HashMap;
 use sync::executer::ExecuterInner;
-use r2d2_postgres::{TlsMode, PostgresConnectionManager};
-use r2d2::{Config, Pool, PooledConnection};
 
 pub struct ExecuterInnerDB {
     db: Arc<Db>,

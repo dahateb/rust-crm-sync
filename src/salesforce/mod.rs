@@ -112,7 +112,7 @@ impl Salesforce {
                                                          &describe.get_fields(),
                                                          result));
             }
-            Err(str) => {
+            Err(_) => {
                 return None;
             }
         }
