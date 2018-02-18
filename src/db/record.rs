@@ -16,7 +16,8 @@ enum Value {
 }
 
 pub struct Record {
-    pub id: Option<String>,
+    pub id: i32,
+    pub sfid: Option<String>,
     data: HashMap<String,Option<Value>>
 }
 
@@ -24,7 +25,8 @@ impl Record {
 
     pub fn new(row: &Row) -> Record{
         Record{
-            id: row.get::<_,Option<String>>(0),
+            id: row.get(0),
+            sfid: row.get::<_,Option<String>>(1),
             data: Record::parse_data(row)
         }
     }
@@ -32,8 +34,13 @@ impl Record {
     fn parse_data(row: &Row) -> HashMap<String, Option<Value>>{
         let mut map = HashMap::new();
         let mut idx = 0;
+        let sfid = row.get::<_,Option<String>>(1);
         for column in row.columns().iter() {
-            println!("{:?}", column);
+           // println!("{:?}", column);
+            if idx < 2 {
+                idx += 1;
+                continue;
+            }
             let value = match column.type_() {
                 &INT4 => {
                     match row.get::<_, Option<i32>>(idx) {
@@ -79,8 +86,9 @@ impl Record {
                     }
                 },  
             };
-            
-            map.insert(column.name().to_string(), value);
+            if Record::include_nulls(&sfid, &value){
+                map.insert(column.name().to_string(), value);
+            }
             idx += 1;
         }
         map
@@ -88,5 +96,12 @@ impl Record {
 
     pub fn to_json(&self) -> String{
         serde_json::to_string(&self.data).unwrap()
+    }
+
+    fn include_nulls(id: &Option<String>, value: &Option<Value>) -> bool {
+        if id.is_none() && value.is_none(){
+            return false;
+        }
+        true
     }
 }

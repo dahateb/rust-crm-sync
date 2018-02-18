@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::io::Read;
 use config::SalesforceConfig;
-use reqwest::{Client as ReqClient, Request, Response};
-use reqwest::header::{Headers, Authorization, Bearer};
+use reqwest::{Client as ReqClient, Request, RequestBuilder, Response, Method};
+use reqwest::header::{Headers, Authorization, Bearer, ContentType};
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginData {
@@ -68,15 +68,37 @@ impl Client {
     pub fn get_resource<F>(&self, req_builder: F) -> Result<String, String>
         where F: Fn(&String) -> String
     {
-        let req = self.build_auth_request(req_builder);
+        let mut req = self.build_auth_request(Method::Get, req_builder);
+        let mut response = self.call(req.build().unwrap());
+        let mut result = String::new();
+        let _bytes_read = response.read_to_string(&mut result);
+        Ok(result)
+    }
+
+    pub fn update_resource<F>(&self, data: String, req_builder: F) -> Result<String,String>
+        where F: Fn(&String) -> String
+    {
+        let mut builder = self.build_auth_request(Method::Patch, req_builder);
+        builder.body(data);
+        let mut req = builder.build().unwrap();
+        req.headers_mut().set(ContentType::json());
         let mut response = self.call(req);
         let mut result = String::new();
         let _bytes_read = response.read_to_string(&mut result);
         Ok(result)
     }
 
-    pub fn push_resource(&self) {
-       // self.client;
+    pub fn create_resource<F>(&self,  data: String, req_builder: F) -> Result<String,String>
+        where F: Fn(&String) -> String
+    {
+        let mut builder = self.build_auth_request(Method::Post, req_builder);
+        builder.body(data);
+        let mut req = builder.build().unwrap();
+        req.headers_mut().set(ContentType::json());
+        let mut response = self.call(req);
+        let mut result = String::new();
+        let _bytes_read = response.read_to_string(&mut result);
+        Ok(result)
     }
 
     fn call(&self, req: Request) -> Response {
@@ -92,15 +114,15 @@ impl Client {
         response
     }
 
-    fn build_auth_request<F>(&self, req_builder: F) -> Request
+    fn build_auth_request<F>(&self,method: Method, req_builder: F) -> RequestBuilder
         where F: Fn(&String) -> String
     {
         let ld = self.login_data.as_ref().unwrap();
         let uri = req_builder(&ld.instance_url);
-        let mut req = self.client.get(uri.as_str());
+        let mut req = self.client.request(method, uri.as_str());
         let mut headers = Headers::new();
         headers.set(Authorization(Bearer { token: ld.access_token.clone() }));
         req.headers(headers);
-        req.build().unwrap()
+        req
     }
 }

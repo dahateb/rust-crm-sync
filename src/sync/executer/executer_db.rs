@@ -46,9 +46,11 @@ impl ExecuterInner for ExecuterInnerDB{
         //println!("{:?}", records_map);
         for key in records_map.keys() {
             let records = self.db.get_object_data_by_id(&key, records_map.get::<str>(&key).unwrap());
-            for rec in records{
+            for rec in &records{
                 println!("{}", rec.to_json());
             }
+            let ids = self.salesforce.push_records(&key, records);
+            println!("{:?}", ids);
         }
     }
     

@@ -101,7 +101,7 @@ impl Db {
         let row = rows.iter().next().unwrap();
         let config: ObjectConfig = ObjectConfig::new(row.get(0), row.get(1), ids.len() as u32, row.get(2));
         let fieldnames = config.get_db_field_names();
-        let mut query = format!("SELECT sfid as id, {} FROM salesforce.{}", fieldnames.join(","), object_name);
+        let mut query = format!("SELECT id, sfid, {} FROM salesforce.{}", fieldnames.join(","), object_name);
         if ids.len() > 0 {
             query.push_str(" WHERE id IN(");
             let mut tmp = vec!();

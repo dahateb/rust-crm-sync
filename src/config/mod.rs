@@ -10,6 +10,7 @@ pub struct SalesforceConfig {
     pub username: String,
     pub password: String,
     pub sec_token: String,
+    pub api_version: String
 }
 
 #[derive(Clone, Serialize, Deserialize)]

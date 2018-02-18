@@ -22,7 +22,7 @@ use config::Config;
 use sync::Sync;
 
 lazy_static! {
-    static ref CONF:Config = Config::new("config\\config.1.json").unwrap();
+    static ref CONF:Config = Config::new("config\\config.json").unwrap();
 }
 
 fn main() {
