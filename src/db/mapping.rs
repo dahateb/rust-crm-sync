@@ -13,7 +13,7 @@ lazy_static! {
         m.insert("percent".to_owned(), "double precision");
         m.insert("int".to_owned(), "integer");
         m.insert("datetime".to_owned(), "timestamp");
-        m.insert("date".to_owned(), "timestamp");
+        m.insert("date".to_owned(), "date");
         m.insert("boolean".to_owned(), "boolean");
         m
     };

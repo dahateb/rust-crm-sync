@@ -73,7 +73,6 @@ impl Sync {
                     break;
                 }
                 Sync { level: STATE_LIST_OBJECTS, .. } => {
-                    println!("Selected Object: {}", self.command);
                     self.select_object();
                 }
                 Sync { level: STATE_SELECTED_OBJECTS, .. } => {
@@ -179,7 +178,7 @@ impl Sync {
             println!("Input invalid");
             return;
         }
-
+        println!("Selected Object: {}", self.command);
         let (name, row_count) = self.setup.setup_sf_object(index as usize, true).unwrap();
         println!("Selected object: {}", name);
             println!("Synched {} rows", row_count);

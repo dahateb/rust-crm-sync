@@ -1,6 +1,6 @@
-use chrono::NaiveDateTime;
+use chrono::{NaiveDateTime, NaiveDate};
 use postgres::rows::Row;
-use postgres::types::{TEXT, INT4, INT8, VARCHAR, FLOAT8, FLOAT4, BOOL, TIMESTAMP};
+use postgres::types::{TEXT, INT4, INT8, VARCHAR, FLOAT8, FLOAT4, BOOL, TIMESTAMP,DATE};
 use std::collections::HashMap;
 use serde_json;
 
@@ -75,6 +75,12 @@ impl Record {
                 &BOOL => Some(Value::Bool(row.get::<_, bool>(idx))),
                 &TIMESTAMP =>  {
                     match row.get::<_, Option<NaiveDateTime>>(idx) {
+                        Some(d) => Some(Value::STR(d.to_string())),
+                        None => None
+                    }
+                },
+                &DATE => {
+                    match row.get::<_, Option<NaiveDate>>(idx) {
                         Some(d) => Some(Value::STR(d.to_string())),
                         None => None
                     }

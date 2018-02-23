@@ -27,7 +27,7 @@ impl ExecuterInnerDB {
 
 impl ExecuterInner for ExecuterInnerDB{
     fn execute(&self, sender: Sender<String>) {
-        let _ = sender.send("Executer DB".to_owned());
+        //let _ = sender.send("Executer DB".to_owned());
         let mut records_map: HashMap<String, Vec<i32>> = HashMap::new();
         for note in self.db.get_notifications().iter() {
             let object: Vec<&str> = note.split("::").collect();
