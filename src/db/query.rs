@@ -30,14 +30,14 @@ impl<'query> CreateQueryBuilder<'query> {
 
 #[derive(Debug)]
 pub struct UpdateQueryBuilder<'update> {
-    table_name: &'update String,
+    table_name: &'update str,
     fields: Vec<String>,
     and_where: Vec<String>
 }
 
 impl<'update> UpdateQueryBuilder<'update> {
     
-    pub fn new(object_name: & String) -> UpdateQueryBuilder {
+    pub fn new(object_name: &str) -> UpdateQueryBuilder {
         UpdateQueryBuilder {
             table_name: object_name,
             fields: Vec::new(),
@@ -45,18 +45,18 @@ impl<'update> UpdateQueryBuilder<'update> {
         }
     }
 
-    pub fn add_field(&mut self, name: &'update String, value: &'update String) {
+    pub fn add_field(&mut self, name: &'update str, value: &'update str) {
         self.fields.push(format!("{}={}", name, escape_single_quote(value)));
     }
 
-    pub fn add_and_where(&mut self, name: &'update str, value: &'update String, operator: String) {
+    pub fn add_and_where(&mut self, name: &'update str, value: &'update str, operator: &str) {
         self.and_where.push(format!("{} {} '{}'", name, operator, escape_single_quote(value)));
     }
 
     pub fn build(&self) -> String {
         let mut query = String::new();
         query.push_str("UPDATE ");
-        query.push_str(self.table_name.as_str());
+        query.push_str(self.table_name);
         query.push_str(" SET ");
         query.push_str(self.fields.join(",").as_str());
         if self.and_where.len() > 0 {
@@ -68,12 +68,19 @@ impl<'update> UpdateQueryBuilder<'update> {
     }
 }
 
-pub fn escape_single_quote(elem: &String) -> String {
+pub fn escape_single_quote(elem: &str) -> String {
     if elem.starts_with("'") && elem.ends_with("'") {
-        let tmp = elem.as_str();
+        let tmp = elem;
         let tmp_slice = &tmp[1..elem.len() - 1];
         let tmp_str = tmp_slice.to_string().replace("'", "''");
-        return String::from("'") + tmp_str.as_str() + "'";
+        return format!("'{}'", tmp_str);
     }
-    return elem.to_string();
+    return elem.to_owned();
+}
+
+pub fn get_lock_query(object_name: &str, lock: bool) -> String {
+    if lock {
+        return format!("SELECT set_config('salesforce.{}_lock','lock', false);", object_name);
+    }
+    format!("SELECT set_config('salesforce.{}_lock','', false);", object_name)   
 }

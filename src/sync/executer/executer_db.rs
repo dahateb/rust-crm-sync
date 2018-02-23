@@ -47,7 +47,8 @@ impl ExecuterInner for ExecuterInnerDB{
             for rec in &records{
                 println!("{}", rec.to_json());
             }
-            let ids = self.salesforce.push_records(&key, records);
+            let ids = self.salesforce.push_records(&key, &records);
+            self.db.update_ids(&key, &ids);
             println!("{:?}", ids);
         }
     }

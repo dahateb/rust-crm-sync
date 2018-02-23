@@ -1,3 +1,6 @@
+pub mod objects;
+pub mod client;
+
 use std::str;
 use std::ops::Sub;
 use serde_json::{self, Value};
@@ -6,10 +9,6 @@ use self::objects::{SObject, SObjectList, SObjectDescribe, SObjectConfiguration,
                     SObjectRowResultWrapper};
 use chrono::prelude::*;
 use time::Duration;
-
-pub mod objects;
-pub mod client;
-
 use std::collections::HashMap;
 use salesforce::client::Client;
 use db::objects::ObjectConfig;
@@ -75,7 +74,7 @@ impl Salesforce {
 
     pub fn get_records_from_describe(&self,
                                      describe: &SObjectConfiguration,
-                                     object_name: &String)
+                                     object_name: &str)
                                      -> Result<SObjectRowResultWrapper, String> {
         let all_fields: Vec<String> = describe
             .get_fields()
@@ -118,7 +117,7 @@ impl Salesforce {
         }
     }
 
-    pub fn push_records(&self, object_type: &String, records: Vec<Record>) 
+    pub fn push_records(&self, object_type: &str, records: &[Record]) 
         -> HashMap<i32,String>
     {
         let mut created_ids = HashMap::new();

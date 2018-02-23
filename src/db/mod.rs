@@ -6,12 +6,13 @@ pub mod record;
 use postgres::rows::Rows;
 use salesforce::objects::{SObjectDescribe, Field, SObjectRowResultWrapper};
 use serde_json;
+use std::collections::HashMap;
 use r2d2_postgres::{TlsMode, PostgresConnectionManager};
 use r2d2::{Pool};
 use r2d2::config::Builder;
 use config::DbConfig;
 use fallible_iterator::FallibleIterator;
-use db::query::{CreateQueryBuilder, UpdateQueryBuilder, escape_single_quote};
+use db::query::{CreateQueryBuilder, UpdateQueryBuilder, escape_single_quote, get_lock_query};
 use db::objects::ObjectConfig;
 use db::record::Record;
 
@@ -133,12 +134,12 @@ impl Db {
         for id in wrapper.rows.keys() {
             let mut result =
                 try!{
-                self.update(id, &wrapper.object_name, &wrapper.rows.get(id).unwrap())
+                self.update_rows(id, &wrapper.object_name, &wrapper.rows.get(id).unwrap())
             };
             if result == 0 {
                 result =
                     try!{
-                    self.insert(&wrapper.object_name, &wrapper.rows.get(id).unwrap())
+                    self.insert_rows(&wrapper.object_name, &wrapper.rows.get(id).unwrap())
                 }
             }
             count += result;
@@ -149,7 +150,7 @@ impl Db {
     pub fn populate(&self, wrapper: &SObjectRowResultWrapper) -> Result<u64, String> {
         let mut count = 0;
         for row in wrapper.rows.values() {
-            count += try!(self.insert(&wrapper.object_name, &row)
+            count += try!(self.insert_rows(&wrapper.object_name, &row)
                               .map_err(|err| err.to_string()));
         }
         Ok(count)
@@ -163,13 +164,27 @@ impl Db {
         let _result = conn.execute(query.as_str(), &[]).unwrap();
     }
 
-    fn insert(&self,
+    pub fn update_ids(&self,object_name: &String, ids_map: &HashMap<i32,String>) {
+        let mut id_str;
+        let mut sfid;
+        let table_name = format!("salesforce.{}",object_name);
+        for id in ids_map.keys(){
+            let mut builder = UpdateQueryBuilder::new(&table_name);
+            id_str = id.to_string();
+            sfid = format!("'{}'", ids_map[id]);
+            builder.add_field("sfid", &sfid);
+            builder.add_and_where("id", &id_str , "=");
+            let _ = self.query_with_lock(&builder.build(), object_name);
+        }
+    }
+
+    fn insert_rows(&self,
               object_name: &String,
               row: &(Vec<String>, Vec<String>))
               -> Result<u64, String> {
         let row_values = row.1
             .iter()
-            .map(escape_single_quote)
+            .map(|val| escape_single_quote(&val))
             .collect::<Vec<String>>();
         let query = format!("INSERT INTO salesforce.{} ({}) VALUES ({});",
                             object_name,
@@ -181,7 +196,7 @@ impl Db {
         result
     }
 
-    fn update(&self,
+    fn update_rows(&self,
               id: &String,
               object_name: &String,
               row: &(Vec<String>, Vec<String>))
@@ -191,7 +206,7 @@ impl Db {
         for i in 0..row.0.len() {
             builder.add_field(&row.0[i], &row.1[i]);
         }
-        builder.add_and_where("sfid", id, "=".to_string());
+        builder.add_and_where("sfid", id, "=");
         let query = builder.build();
         // println!("{}", query);
         let result = self.query_with_lock(&query, &object_name);
@@ -202,10 +217,12 @@ impl Db {
     fn query_with_lock(&self, query: &String, object_name: &String) -> Result<u64, String>{
         //add channel lock flag here
         let conn = self.pool.get().unwrap();
-        let _ = conn.execute(&format!("SELECT set_config('salesforce.{}_lock','lock', false);", object_name), &[]);
+        let _ = try!(conn.execute(&get_lock_query(object_name, true), &[])
+                                .map_err(|err| err.to_string()));
         let result = try!(conn.execute(&query, &[])
-                              .map_err(|err| err.to_string()));
-        let _ = conn.execute(&format!("SELECT set_config('salesforce.{}_lock','', false);", object_name), &[]);
+                                .map_err(|err| err.to_string()));
+        let _ = try!(conn.execute(&get_lock_query(object_name, false), &[])
+                                .map_err(|err| err.to_string()));
         Ok(result)
     }
 
