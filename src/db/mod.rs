@@ -53,8 +53,10 @@ impl Db {
             let mapping = mapping::sf_type_mapping(&field.sf_type, field.length).unwrap();
             query_builder.add_field( field.name.as_str(), mapping);
         }
-        query_builder.add_field("created", "timestamp".to_string());
-        query_builder.add_field("updated", "timestamp".to_string());
+        query_builder.add_field("_s_error", "TEXT".to_string());
+        query_builder.add_field("_s_state", "varchar(20) DEFAULT 'OK'".to_string());
+        query_builder.add_field("_s_created", "TIMESTAMP DEFAULT NOW()".to_string());
+        query_builder.add_field("_s_updated", "TIMESTAMP".to_string());
         let query = query_builder.build();
         
         // println!("{}", query);
@@ -129,6 +131,19 @@ impl Db {
                                  &[&id]);
     }
 
+    pub fn set_error_state(&self, object_name: &str, id: &i32, error: &str) {
+        let id_str = id.to_string();
+        let error_str = format!("'{}'", error);
+        let table_name = format!("salesforce.{}",object_name);
+        let mut builder = UpdateQueryBuilder::new(&table_name);
+        builder.add_field("_s_error", &error_str);
+        builder.add_field("_s_state", "'ERROR'");
+        builder.add_and_where("id", &id_str, "=");
+        let query = builder.build();
+        println!("{}", query);
+        let _ = self.query_with_lock(&query, object_name);
+    }
+
     pub fn upsert_object_rows(&self, wrapper: &SObjectRowResultWrapper) -> Result<u64, String> {
         let mut count = 0;
         for id in wrapper.rows.keys() {
@@ -191,9 +206,7 @@ impl Db {
                             row.0.join(","),
                             row_values.join(","));
         //println!("{}", query);
-        let result = self.query_with_lock(&query, &object_name);
-        //println!("{:?}", result);
-        result
+        self.query_with_lock(&query, &object_name)
     }
 
     fn update_rows(&self,
@@ -209,12 +222,10 @@ impl Db {
         builder.add_and_where("sfid", id, "=");
         let query = builder.build();
         // println!("{}", query);
-        let result = self.query_with_lock(&query, &object_name);
-        // println!("{:?}", result);
-        result
+        self.query_with_lock(&query, &object_name)
     }
 
-    fn query_with_lock(&self, query: &String, object_name: &String) -> Result<u64, String>{
+    fn query_with_lock(&self, query: &String, object_name: &str) -> Result<u64, String>{
         //add channel lock flag here
         let conn = self.pool.get().unwrap();
         let _ = try!(conn.execute(&get_lock_query(object_name, true), &[])
@@ -245,7 +256,6 @@ impl Db {
         }else {
             let _ = conn.execute("UNLISTEN salesforce_data", &[]);
         }
-        
     }
 }
 

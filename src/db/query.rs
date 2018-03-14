@@ -1,12 +1,12 @@
 #[derive(Debug)]
 pub struct CreateQueryBuilder<'query> {
-    table_name: &'query String,
+    table_name: &'query str,
     fields: Vec<String>
 }
 
 impl<'query> CreateQueryBuilder<'query> {
 
-    pub fn new(object_name: & String) -> CreateQueryBuilder {
+    pub fn new(object_name: &str) -> CreateQueryBuilder {
         CreateQueryBuilder {
             table_name: object_name,
             fields: Vec::new()
@@ -20,7 +20,7 @@ impl<'query> CreateQueryBuilder<'query> {
     pub fn build(&self) -> String {
         let mut query = String::new();
         query.push_str("CREATE TABLE ");
-        query.push_str(self.table_name.as_str());
+        query.push_str(self.table_name);
         query.push_str("(");
         query.push_str(self.fields.join(",").as_str());
         query.push_str(")");
@@ -59,6 +59,7 @@ impl<'update> UpdateQueryBuilder<'update> {
         query.push_str(self.table_name);
         query.push_str(" SET ");
         query.push_str(self.fields.join(",").as_str());
+        query.push_str(", _s_updated = NOW() ");
         if self.and_where.len() > 0 {
             query.push_str(" WHERE ");
             query.push_str(self.and_where.join(" AND ").as_str());

@@ -118,9 +118,10 @@ impl Salesforce {
     }
 
     pub fn push_records(&self, object_type: &str, records: &[Record]) 
-        -> HashMap<i32,String>
+        -> (HashMap<i32,String>, HashMap<i32,String>)
     {
         let mut created_ids = HashMap::new();
+        let mut failed_ids = HashMap::new();
         for rec in records {
             let sfid_opt = &rec.sfid;
             let result = match sfid_opt {
@@ -153,9 +154,10 @@ impl Salesforce {
                 },
                 Err(err_result) => {
                     println!("{}", err_result);
+                    failed_ids.insert(rec.id, err_result);
                 }
             }
         }
-        created_ids
+        (created_ids, failed_ids)
     }
 }
