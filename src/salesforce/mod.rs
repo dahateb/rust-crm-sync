@@ -141,11 +141,19 @@ impl Salesforce {
                     self.client.create_resource(rec.to_json(), req_builder)
                 },
             };
-            //if record was created
-            if sfid_opt.is_none() {
-                println!("{:?}", result);
-                let v: Value = serde_json::from_str(result.unwrap().as_str()).unwrap();
-                created_ids.insert(rec.id, v["id"].as_str().unwrap().to_string());
+
+            match result {
+                Ok(json_result) => {
+                    //if record was created
+                    if sfid_opt.is_none() {
+                        println!("{:?}", json_result);
+                        let v: Value = serde_json::from_str(json_result.as_str()).unwrap();
+                        created_ids.insert(rec.id, v["id"].as_str().unwrap().to_string());
+                    }
+                },
+                Err(err_result) => {
+                    println!("{}", err_result);
+                }
             }
         }
         created_ids

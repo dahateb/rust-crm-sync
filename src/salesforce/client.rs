@@ -53,7 +53,7 @@ impl Client {
         params.insert("password", password.as_str());
         let mut req = self.client.post(config.uri.as_str());
         let req = req.form(&params).build().unwrap();
-        let mut response = self.call(req);
+        let mut response = self.call(req).unwrap();
         let ld: LoginData = response.json().map_err(|err| println!("{}", err)).unwrap();
         self.login_data = Some(ld);
         self
@@ -69,7 +69,7 @@ impl Client {
         where F: Fn(&String) -> String
     {
         let mut req = self.build_auth_request(Method::Get, req_builder);
-        let mut response = self.call(req.build().unwrap());
+        let mut response = try!(self.call(req.build().unwrap()));
         let mut result = String::new();
         let _bytes_read = response.read_to_string(&mut result);
         Ok(result)
@@ -82,7 +82,7 @@ impl Client {
         builder.body(data);
         let mut req = builder.build().unwrap();
         req.headers_mut().set(ContentType::json());
-        let mut response = self.call(req);
+        let mut response = try!(self.call(req));
         let mut result = String::new();
         let _bytes_read = response.read_to_string(&mut result);
         Ok(result)
@@ -95,23 +95,22 @@ impl Client {
         builder.body(data);
         let mut req = builder.build().unwrap();
         req.headers_mut().set(ContentType::json());
-        let mut response = self.call(req);
+        let mut response = try!(self.call(req));
         let mut result = String::new();
         let _bytes_read = response.read_to_string(&mut result);
         Ok(result)
     }
 
-    fn call(&self, req: Request) -> Response {
-        let mut response = self.client
+    fn call(&self, req: Request) -> Result<Response,String> {
+        let mut response = try!(self.client
             .execute(req)
-            .map_err(|err| println!("{:?}", err))
-            .unwrap();
+            .map_err(|err| err.to_string()));
         if !response.status().is_success() {
             let mut result = String::new();
             let _= response.read_to_string(&mut result);
-            panic!("{} {}", response.status(), result);
+            return Err(format!("{} {}", response.status(), result));
         }
-        response
+        Ok(response)
     }
 
     fn build_auth_request<F>(&self,method: Method, req_builder: F) -> RequestBuilder
