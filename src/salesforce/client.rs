@@ -3,6 +3,7 @@ use std::io::Read;
 use config::SalesforceConfig;
 use reqwest::{Client as ReqClient, Request, RequestBuilder, Response, Method};
 use reqwest::header::{Headers, Authorization, Bearer, ContentType};
+use serde_json::value::Value;
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginData {
@@ -54,7 +55,11 @@ impl Client {
         let mut req = self.client.post(config.uri.as_str());
         let req = req.form(&params).build().unwrap();
         let mut response = self.call(req).unwrap();
-        let ld: LoginData = response.json().map_err(|err| println!("{}", err)).unwrap();
+	//println!("{:?}",response);
+	//let mut res = String::new();
+	//response.read_to_string(&mut res);
+	//println!("{}", res);
+        let ld: LoginData = response.json().map_err(|err| println!("Login failed: {}", err)).unwrap();
         self.login_data = Some(ld);
         self
     }
