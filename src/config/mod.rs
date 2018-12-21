@@ -24,10 +24,16 @@ pub struct SyncConfig {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
+pub struct ServerConfig {
+    pub url: String
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Config {
     pub salesforce: SalesforceConfig,
     pub sync: SyncConfig,
     pub db: DbConfig,
+    pub server: ServerConfig
 }
 
 impl Config {
