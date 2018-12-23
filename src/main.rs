@@ -9,6 +9,7 @@ extern crate r2d2_postgres;
 extern crate fallible_iterator;
 extern crate hyper;
 extern crate pretty_env_logger;
+extern crate futures;
 
 #[macro_use]
 extern crate lazy_static;
@@ -23,7 +24,7 @@ mod db;
 mod server;
 use config::Config;
 use sync::Sync;
-use server::Server;
+use server::ApiServer as Server;
 use std::env;
 
 lazy_static! {
@@ -38,8 +39,7 @@ fn main() {
         let mut syncher = Sync::new(&CONF);
         syncher.run();
     }else{
-        let server = Server::new(&CONF);
-        server.run();
+        Server::start(&CONF);
     }
 
 }
