@@ -1,7 +1,7 @@
 use db::Db;
 use salesforce::Salesforce;
 use std::sync::Arc;
-use std::cell::RefCell;
+use std::sync::Mutex;
 use salesforce::objects::SObject;
 use db::objects::ObjectConfig;
 use std::io::{self, Write};
@@ -18,7 +18,7 @@ struct SyncObjectCache {
 pub struct Setup {
     salesforce: Arc<Salesforce>,
     db: Arc<Db>,
-    cache: RefCell<SyncObjectCache>,
+    cache: Mutex<SyncObjectCache>,
 }
 
 impl Setup {
@@ -34,10 +34,10 @@ impl Setup {
         where F: FnMut(&(u32, &String, bool)) 
     {
         let sf_objects = self.salesforce.get_objects()?;
-        self.cache.borrow_mut().sf_objects = Some(sf_objects);
+        self.cache.lock().unwrap().sf_objects = Some(sf_objects);
         let mut i:u32 = 0;
         let result = self.cache
-            .borrow()
+            .lock().unwrap()
             .sf_objects
             .as_ref()
             .unwrap()
@@ -55,10 +55,10 @@ impl Setup {
         where F: FnMut(&(u32, &String, u32)) 
     {
         let objects = self.db.get_selected_objects(-1)?;
-        self.cache.borrow_mut().db_objects = Some(objects);
+        self.cache.lock().unwrap().db_objects = Some(objects);
         let mut i:u32 = 0;
         let count = self.cache
-            .borrow()
+            .lock().unwrap()
             .db_objects
             .as_ref()
             .unwrap()
@@ -76,7 +76,7 @@ impl Setup {
                            index: usize,
                            setup_db_sync: bool)
                            -> Result<(String, u64), String> {
-        let cache = &self.cache.borrow();
+        let cache = &self.cache.lock().unwrap();
         let item = &cache
             .sf_objects
             .as_ref()
@@ -115,7 +115,7 @@ impl Setup {
     }
 
     pub fn delete_db_object(&self, index: usize) -> Result<String, String> {
-        let cache = &self.cache.borrow();
+        let cache = &self.cache.lock().unwrap();
         let db_objects = cache.db_objects.as_ref().ok_or(ERR_CACHE_NOT_SETUP)?;
         let obj = &db_objects.get(index - 1).ok_or(ERR_OBJECT_NOT_FOUND)?;
         self.db.destroy(obj.id, &obj.name);
