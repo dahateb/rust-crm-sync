@@ -4,7 +4,7 @@ use config::Config;
 use db::Db;
 use futures::{future, Future};
 use hyper::service::{NewService, Service};
-use hyper::{Body, Error, Request, Response, Server, StatusCode};
+use hyper::{Body, Error, Request, Response, Server};
 use salesforce::Salesforce;
 use server::router::Router;
 use std::sync::Arc;
@@ -57,14 +57,6 @@ impl Service for ApiServer {
     type Error = Error;
     type Future = Box<Future<Item = Response<Body>, Error = Error> + Send>;
     fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
-        let test = self.config.server.url.as_str();
-        Box::new(future::ok(
-            /* Response::builder()
-            .status(StatusCode::OK)
-            .body((test).into())
-            .unwrap()
-            */
-            self.router.handle(req),
-        ))
+        Box::new(future::ok(self.router.handle(req)))
     }
 }

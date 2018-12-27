@@ -8,7 +8,6 @@ extern crate r2d2;
 extern crate r2d2_postgres;
 extern crate reqwest;
 extern crate serde;
-extern crate serde_json;
 extern crate time;
 
 #[macro_use]
@@ -16,6 +15,9 @@ extern crate lazy_static;
 
 #[macro_use]
 extern crate serde_derive;
+
+#[macro_use]
+extern crate serde_json;
 
 mod config;
 mod db;

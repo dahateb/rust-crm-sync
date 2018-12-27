@@ -31,7 +31,7 @@ pub struct Sync {
     executer: Executer,
     setup: Setup,
     logger: RefCell<Logger>,
-    config: &'static Config,
+    _config: &'static Config,
 }
 
 impl Sync {
@@ -46,7 +46,7 @@ impl Sync {
             executer: Executer::new(db_arc.clone(), sf_arc.clone(), &config.sync),
             setup: Setup::new(db_arc, sf_arc),
             logger: RefCell::new(Logger::new()),
-            config: config,
+            _config: config,
         }
     }
 
@@ -198,8 +198,9 @@ impl Sync {
 
     fn list(&self) {
         println!("List:");
-        let print_func = |obj: &(u32, &String, bool)| {
+        let print_func = |obj: (u32, &String, bool)| {
             println!("{}.\t{}\t\t\t\t{}", obj.0, obj.1, obj.2);
+            String::new()
         };
         let _ = self
             .setup
@@ -210,8 +211,9 @@ impl Sync {
 
     fn show_selected_objects(&self) {
         println!("Selected Objects");
-        let print_func = |obj: &(u32, &String, u32)| {
+        let print_func = |obj: (u32, &String, u32)| {
             println!("{}.\t{}\t\t\t{}", obj.0, obj.1, obj.2);
+            String::new()
         };
         let _ = self
             .setup

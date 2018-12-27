@@ -30,9 +30,9 @@ impl Setup {
         }
     }
 
-    pub fn list_salesforce_objects<F>(&self, print_func: F) -> Result<usize, String>
+    pub fn list_salesforce_objects<F>(&self, print_func: F) -> Result<Vec<String>, String>
     where
-        F: FnMut(&(u32, &String, bool)),
+        F: FnMut((u32, &String, bool)) -> String,
     {
         let sf_objects = self.salesforce.get_objects()?;
         self.cache.lock().unwrap().sf_objects = Some(sf_objects);
@@ -49,19 +49,19 @@ impl Setup {
                 i += 1;
                 (i, &obj.name, obj.createable)
             })
-            .inspect(print_func)
-            .count();
+            .map(print_func)
+            .collect::<Vec<_>>();
         Ok(result)
     }
 
-    pub fn list_db_objects<F>(&self, print_func: F) -> Result<usize, String>
+    pub fn list_db_objects<F>(&self, print_func: F) -> Result<Vec<String>, String>
     where
-        F: FnMut(&(u32, &String, u32)),
+        F: FnMut((u32, &String, u32)) -> String,
     {
         let objects = self.db.get_selected_objects(-1)?;
         self.cache.lock().unwrap().db_objects = Some(objects);
         let mut i: u32 = 0;
-        let count = self
+        let result = self
             .cache
             .lock()
             .unwrap()
@@ -73,9 +73,9 @@ impl Setup {
                 i += 1;
                 (i, &obj.name, obj.count)
             })
-            .inspect(print_func)
-            .count();
-        Ok(count)
+            .map(print_func)
+            .collect::<Vec<String>>();
+        Ok(result)
     }
 
     pub fn setup_sf_object(
