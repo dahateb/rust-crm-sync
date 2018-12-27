@@ -83,8 +83,8 @@ impl Setup {
         index: usize,
         setup_db_sync: bool,
     ) -> Result<(String, u64), String> {
-        let cache = &self.cache.lock().unwrap();
-        let item = &cache
+        let cache = self.cache.lock().unwrap();
+        let item = cache
             .sf_objects
             .as_ref()
             .ok_or(ERR_CACHE_NOT_SETUP)?
@@ -123,7 +123,7 @@ impl Setup {
     }
 
     pub fn delete_db_object(&self, index: usize) -> Result<String, String> {
-        let cache = &self.cache.lock().unwrap();
+        let cache = self.cache.lock().unwrap();
         let db_objects = cache.db_objects.as_ref().ok_or(ERR_CACHE_NOT_SETUP)?;
         let obj = &db_objects.get(index - 1).ok_or(ERR_OBJECT_NOT_FOUND)?;
         self.db.destroy(obj.id, &obj.name);
