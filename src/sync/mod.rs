@@ -1,18 +1,18 @@
 pub mod executer;
-pub mod setup;
 pub mod logger;
+pub mod setup;
 
-use std::io;
 use config::Config;
-use salesforce::Salesforce;
-use std::string::String;
-use std::str::FromStr;
 use db::Db;
+use salesforce::Salesforce;
+use std::cell::RefCell;
+use std::io;
+use std::str::FromStr;
+use std::string::String;
 use std::sync::Arc;
 use sync::executer::Executer;
-use sync::setup::Setup;
-use std::cell::RefCell;
 use sync::logger::Logger;
+use sync::setup::Setup;
 
 const STATE_START: u8 = 0;
 const STATE_SETUP: u8 = 49;
@@ -34,7 +34,6 @@ pub struct Sync {
     config: &'static Config,
 }
 
-
 impl Sync {
     pub fn new(config: &'static Config) -> Sync {
         let sf = Salesforce::new(&config.salesforce);
@@ -50,32 +49,77 @@ impl Sync {
             config: config,
         }
     }
-    
+
     pub fn run(&mut self) {
         let mut input = String::new();
 
         loop {
             match *self {
-                Sync {level: STATE_START, command: STATE_START, ..} => self.start(),
-                Sync {level: STATE_START, command: STATE_SETUP, ..} => self.setup(),
-                Sync {level: STATE_START, command: STATE_SYNC,  ..} => self.sync(),
-                Sync {level: STATE_SETUP, command: STATE_LIST_OBJECTS, ..} => self.list(),
-                Sync {level: STATE_SETUP, command: STATE_SELECTED_OBJECTS, ..} => self.show_selected_objects(),
-                Sync {level: STATE_SYNC, command: STATE_START_SYNC, ..} => self.start_sync(),
-                Sync {level: STATE_SYNC, command: STATE_STOP_SYNC, ..} => self.stop_sync(),
-                Sync {level: STATE_SYNC, command: STATE_SYNC_STATUS, ..} => self.start_show_log(),
-                Sync {level: STATE_SYNC_STATUS, ..} => {
+                Sync {
+                    level: STATE_START,
+                    command: STATE_START,
+                    ..
+                } => self.start(),
+                Sync {
+                    level: STATE_START,
+                    command: STATE_SETUP,
+                    ..
+                } => self.setup(),
+                Sync {
+                    level: STATE_START,
+                    command: STATE_SYNC,
+                    ..
+                } => self.sync(),
+                Sync {
+                    level: STATE_SETUP,
+                    command: STATE_LIST_OBJECTS,
+                    ..
+                } => self.list(),
+                Sync {
+                    level: STATE_SETUP,
+                    command: STATE_SELECTED_OBJECTS,
+                    ..
+                } => self.show_selected_objects(),
+                Sync {
+                    level: STATE_SYNC,
+                    command: STATE_START_SYNC,
+                    ..
+                } => self.start_sync(),
+                Sync {
+                    level: STATE_SYNC,
+                    command: STATE_STOP_SYNC,
+                    ..
+                } => self.stop_sync(),
+                Sync {
+                    level: STATE_SYNC,
+                    command: STATE_SYNC_STATUS,
+                    ..
+                } => self.start_show_log(),
+                Sync {
+                    level: STATE_SYNC_STATUS,
+                    ..
+                } => {
                     self.stop_show_log();
                     self.command = STATE_START;
                 }
-                Sync {level: STATE_START, command: STATE_EXIT, ..} => {
+                Sync {
+                    level: STATE_START,
+                    command: STATE_EXIT,
+                    ..
+                } => {
                     println!("Exiting ...");
                     break;
                 }
-                Sync { level: STATE_LIST_OBJECTS, .. } => {
+                Sync {
+                    level: STATE_LIST_OBJECTS,
+                    ..
+                } => {
                     self.select_object();
                 }
-                Sync { level: STATE_SELECTED_OBJECTS, .. } => {
+                Sync {
+                    level: STATE_SELECTED_OBJECTS,
+                    ..
+                } => {
                     self.delete_object();
                     println!("Deleted Object: {}", self.command);
                 }
@@ -85,14 +129,13 @@ impl Sync {
                     self.command = STATE_START;
                 }
             }
-            
+
             match io::stdin().read_line(&mut input) {
                 Ok(n) => {
                     self.level = self.command;
                     self.command = input.as_bytes()[0];
-                    self.input = String::from_str(input.trim())
-                        .unwrap_or_else(|err| { 
-                            println!("{}", err);
+                    self.input = String::from_str(input.trim()).unwrap_or_else(|err| {
+                        println!("{}", err);
                         String::new()
                     });
                     input.clear();
@@ -100,7 +143,7 @@ impl Sync {
                 }
                 Err(error) => println!("error: {}", error),
             }
-        }    
+        }
     }
 
     fn start(&self) {
@@ -115,7 +158,7 @@ impl Sync {
         println!("4. List available Objects");
         println!("5. Show synchronized Objects");
     }
-    
+
     fn sync(&self) {
         println!("Synch:");
         println!("1. Start Synch");
@@ -141,7 +184,7 @@ impl Sync {
                 let mut logger = self.logger.borrow_mut();
                 logger.add_receiver(Some(recv.clone()));
                 logger.start();
-            },
+            }
             None => {
                 println!("Sync not running");
             }
@@ -158,17 +201,21 @@ impl Sync {
         let print_func = |obj: &(u32, &String, bool)| {
             println!("{}.\t{}\t\t\t\t{}", obj.0, obj.1, obj.2);
         };
-        let _ = self.setup.list_salesforce_objects(print_func)
-                    .map_err(|err| println!("{}", err));
+        let _ = self
+            .setup
+            .list_salesforce_objects(print_func)
+            .map_err(|err| println!("{}", err));
         println!("Select Object:");
     }
 
     fn show_selected_objects(&self) {
         println!("Selected Objects");
         let print_func = |obj: &(u32, &String, u32)| {
-             println!("{}.\t{}\t\t\t{}", obj.0, obj.1, obj.2);
+            println!("{}.\t{}\t\t\t{}", obj.0, obj.1, obj.2);
         };
-        let _ = self.setup.list_db_objects(print_func)
+        let _ = self
+            .setup
+            .list_db_objects(print_func)
             .map_err(|err| println!("{}", err));
     }
 
@@ -181,7 +228,7 @@ impl Sync {
         println!("Selected Object: {}", self.command);
         let (name, row_count) = self.setup.setup_sf_object(index as usize, true).unwrap();
         println!("Selected object: {}", name);
-            println!("Synched {} rows", row_count);
+        println!("Synched {} rows", row_count);
     }
 
     fn delete_object(&self) {
@@ -194,4 +241,3 @@ impl Sync {
         println!("Delete Object: {}", name);
     }
 }
-

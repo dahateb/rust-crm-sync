@@ -3,22 +3,22 @@ pub mod objects;
 pub mod query;
 pub mod record;
 
+use config::DbConfig;
+use db::objects::ObjectConfig;
+use db::query::{escape_single_quote, get_lock_query, CreateQueryBuilder, UpdateQueryBuilder};
+use db::record::Record;
+use fallible_iterator::FallibleIterator;
 use postgres::rows::Rows;
-use salesforce::objects::{SObjectDescribe, Field, SObjectRowResultWrapper};
+use r2d2::config::Builder;
+use r2d2::Pool;
+use r2d2_postgres::{PostgresConnectionManager, TlsMode};
+use salesforce::objects::{Field, SObjectDescribe, SObjectRowResultWrapper};
 use serde_json;
 use std::collections::HashMap;
-use r2d2_postgres::{TlsMode, PostgresConnectionManager};
-use r2d2::{Pool};
-use r2d2::config::Builder;
-use config::DbConfig;
-use fallible_iterator::FallibleIterator;
-use db::query::{CreateQueryBuilder, UpdateQueryBuilder, escape_single_quote, get_lock_query};
-use db::objects::ObjectConfig;
-use db::record::Record;
 
 pub struct Db {
     pub pool: Pool<PostgresConnectionManager>,
-    config: &'static DbConfig
+    config: &'static DbConfig,
 }
 
 impl Db {
@@ -28,9 +28,9 @@ impl Db {
         let pool = Pool::new(config, manager)
             .map_err(|err| panic!("DB Error: Cannot connect - {}", err.to_string()))
             .unwrap();
-        Db { 
+        Db {
             pool: pool,
-            config: db_config
+            config: db_config,
         }
     }
 
@@ -42,23 +42,23 @@ impl Db {
     }
 
     pub fn create_object_table(&self, object_name: &String, fields: &Vec<Field>) {
-        let table_name = format!("salesforce.{}",object_name);
+        let table_name = format!("salesforce.{}", object_name);
         let mut query_builder = CreateQueryBuilder::new(&table_name);
         query_builder.add_field("id", "SERIAL PRIMARY KEY".to_string());
-        query_builder.add_field( "sfid", "varchar(18)".to_string());
+        query_builder.add_field("sfid", "varchar(18)".to_string());
         for field in fields {
             if field.name == "Id" || field.sf_type == "address" {
                 continue;
             }
             let mapping = mapping::sf_type_mapping(&field.sf_type, field.length).unwrap();
-            query_builder.add_field( field.name.as_str(), mapping);
+            query_builder.add_field(field.name.as_str(), mapping);
         }
         query_builder.add_field("_s_error", "TEXT".to_string());
         query_builder.add_field("_s_state", "varchar(20) DEFAULT 'OK'".to_string());
         query_builder.add_field("_s_created", "TIMESTAMP DEFAULT NOW()".to_string());
         query_builder.add_field("_s_updated", "TIMESTAMP".to_string());
         let query = query_builder.build();
-        
+
         // println!("{}", query);
         let conn = self.pool.get().unwrap();
         conn.execute(query.as_str(), &[]).unwrap();
@@ -71,8 +71,7 @@ impl Db {
          ON salesforce.{}
          FOR EACH ROW
          EXECUTE PROCEDURE salesforce.notify_change();",
-            object_name,
-            object_name
+            object_name, object_name
         );
         let conn = self.pool.get().unwrap();
         conn.execute(query.as_str(), &[]).unwrap();
@@ -83,39 +82,46 @@ impl Db {
         let query = format!("SELECT id, name, fields, last_sync_time FROM config.objects WHERE last_sync_time < current_timestamp - interval '{} minutes'",
                             interval);
         let rows: Rows = conn.query(query.as_str(), &[]).unwrap();
-        let result = rows.iter()
+        let result = rows
+            .iter()
             .map(|row| {
-                     let name: String = row.get(1);
-                     let query = format!("SELECT count(*)::int FROM salesforce.{:?}",
-                                         name.to_lowercase());
-                     let count_rows: Rows = conn.query(query.as_str(), &[]).unwrap();
-                     let count: i32 = count_rows.get(0).get(0);
-                     ObjectConfig::new(row.get(0), name, count as u32, row.get(2))
-                 })
+                let name: String = row.get(1);
+                let query = format!(
+                    "SELECT count(*)::int FROM salesforce.{:?}",
+                    name.to_lowercase()
+                );
+                let count_rows: Rows = conn.query(query.as_str(), &[]).unwrap();
+                let count: i32 = count_rows.get(0).get(0);
+                ObjectConfig::new(row.get(0), name, count as u32, row.get(2))
+            })
             .collect();
         Ok(result)
     }
 
-    pub fn get_object_data_by_id(&self, object_name: &String , ids: &Vec<i32>) 
-        -> Vec<Record>{
+    pub fn get_object_data_by_id(&self, object_name: &String, ids: &Vec<i32>) -> Vec<Record> {
         let conn = self.pool.get().unwrap();
         let query = "SELECT id, db_name, fields FROM config.objects WHERE db_name = $1";
         let rows = conn.query(query, &[object_name]).unwrap();
         let row = rows.iter().next().unwrap();
-        let config: ObjectConfig = ObjectConfig::new(row.get(0), row.get(1), ids.len() as u32, row.get(2));
+        let config: ObjectConfig =
+            ObjectConfig::new(row.get(0), row.get(1), ids.len() as u32, row.get(2));
         let fieldnames = config.get_db_field_names();
-        let mut query = format!("SELECT id, sfid, {} FROM salesforce.{}", fieldnames.join(","), object_name);
+        let mut query = format!(
+            "SELECT id, sfid, {} FROM salesforce.{}",
+            fieldnames.join(","),
+            object_name
+        );
         if ids.len() > 0 {
             query.push_str(" WHERE id IN(");
-            let mut tmp = vec!();
-            ids.iter().for_each(|id|{
-                tmp.push(format!("{}",id));
+            let mut tmp = vec![];
+            ids.iter().for_each(|id| {
+                tmp.push(format!("{}", id));
             });
             query.push_str(tmp.join(",").as_str());
             query.push_str(")");
         }
         let result = conn.query(&query, &[]).unwrap();
-        let mut res = vec!();
+        let mut res = vec![];
         for row in result.iter() {
             //println!("{:?}",row);
             let record = Record::new(&row);
@@ -127,14 +133,16 @@ impl Db {
 
     pub fn update_last_sync_time(&self, id: i32) {
         let conn = self.pool.get().unwrap();
-        let _result = conn.query("Update config.objects set last_sync_time = now() WHERE id = $1",
-                                 &[&id]);
+        let _result = conn.query(
+            "Update config.objects set last_sync_time = now() WHERE id = $1",
+            &[&id],
+        );
     }
 
     pub fn set_error_state(&self, object_name: &str, id: &i32, error: &str) {
         let id_str = id.to_string();
         let error_str = format!("'{}'", error);
-        let table_name = format!("salesforce.{}",object_name);
+        let table_name = format!("salesforce.{}", object_name);
         let mut builder = UpdateQueryBuilder::new(&table_name);
         builder.add_field("_s_error", &error_str);
         builder.add_field("_s_state", "'ERROR'");
@@ -147,13 +155,11 @@ impl Db {
     pub fn upsert_object_rows(&self, wrapper: &SObjectRowResultWrapper) -> Result<u64, String> {
         let mut count = 0;
         for id in wrapper.rows.keys() {
-            let mut result =
-                try!{
+            let mut result = try! {
                 self.update_rows(id, &wrapper.object_name, &wrapper.rows.get(id).unwrap())
             };
             if result == 0 {
-                result =
-                    try!{
+                result = try! {
                     self.insert_rows(&wrapper.object_name, &wrapper.rows.get(id).unwrap())
                 }
             }
@@ -165,8 +171,9 @@ impl Db {
     pub fn populate(&self, wrapper: &SObjectRowResultWrapper) -> Result<u64, String> {
         let mut count = 0;
         for row in wrapper.rows.values() {
-            count += try!(self.insert_rows(&wrapper.object_name, &row)
-                              .map_err(|err| err.to_string()));
+            count += try!(self
+                .insert_rows(&wrapper.object_name, &row)
+                .map_err(|err| err.to_string()));
         }
         Ok(count)
     }
@@ -179,42 +186,47 @@ impl Db {
         let _result = conn.execute(query.as_str(), &[]).unwrap();
     }
 
-    pub fn update_ids(&self,object_name: &String, ids_map: &HashMap<i32,String>) {
+    pub fn update_ids(&self, object_name: &String, ids_map: &HashMap<i32, String>) {
         let mut id_str;
         let mut sfid;
-        let table_name = format!("salesforce.{}",object_name);
-        for id in ids_map.keys(){
+        let table_name = format!("salesforce.{}", object_name);
+        for id in ids_map.keys() {
             let mut builder = UpdateQueryBuilder::new(&table_name);
             id_str = id.to_string();
             sfid = format!("'{}'", ids_map[id]);
             builder.add_field("sfid", &sfid);
-            builder.add_and_where("id", &id_str , "=");
+            builder.add_and_where("id", &id_str, "=");
             let _ = self.query_with_lock(&builder.build(), object_name);
         }
     }
 
-    fn insert_rows(&self,
-              object_name: &String,
-              row: &(Vec<String>, Vec<String>))
-              -> Result<u64, String> {
-        let row_values = row.1
+    fn insert_rows(
+        &self,
+        object_name: &String,
+        row: &(Vec<String>, Vec<String>),
+    ) -> Result<u64, String> {
+        let row_values = row
+            .1
             .iter()
             .map(|val| escape_single_quote(&val))
             .collect::<Vec<String>>();
-        let query = format!("INSERT INTO salesforce.{} ({}) VALUES ({});",
-                            object_name,
-                            row.0.join(","),
-                            row_values.join(","));
+        let query = format!(
+            "INSERT INTO salesforce.{} ({}) VALUES ({});",
+            object_name,
+            row.0.join(","),
+            row_values.join(",")
+        );
         //println!("{}", query);
         self.query_with_lock(&query, &object_name)
     }
 
-    fn update_rows(&self,
-              id: &String,
-              object_name: &String,
-              row: &(Vec<String>, Vec<String>))
-              -> Result<u64, String> {
-        let table_name = format!("salesforce.{}",object_name);
+    fn update_rows(
+        &self,
+        id: &String,
+        object_name: &String,
+        row: &(Vec<String>, Vec<String>),
+    ) -> Result<u64, String> {
+        let table_name = format!("salesforce.{}", object_name);
         let mut builder = UpdateQueryBuilder::new(&table_name);
         for i in 0..row.0.len() {
             builder.add_field(&row.0[i], &row.1[i]);
@@ -225,22 +237,23 @@ impl Db {
         self.query_with_lock(&query, &object_name)
     }
 
-    fn query_with_lock(&self, query: &String, object_name: &str) -> Result<u64, String>{
+    fn query_with_lock(&self, query: &String, object_name: &str) -> Result<u64, String> {
         //add channel lock flag here
         let conn = self.pool.get().unwrap();
-        let _ = try!(conn.execute(&get_lock_query(object_name, true), &[])
-                                .map_err(|err| err.to_string()));
-        let result = try!(conn.execute(&query, &[])
-                                .map_err(|err| err.to_string()));
-        let _ = try!(conn.execute(&get_lock_query(object_name, false), &[])
-                                .map_err(|err| err.to_string()));
+        let _ = try!(conn
+            .execute(&get_lock_query(object_name, true), &[])
+            .map_err(|err| err.to_string()));
+        let result = try!(conn.execute(&query, &[]).map_err(|err| err.to_string()));
+        let _ = try!(conn
+            .execute(&get_lock_query(object_name, false), &[])
+            .map_err(|err| err.to_string()));
         Ok(result)
     }
 
-    pub fn get_notifications(&self) -> Vec<String>{
-        let mut result = vec!();
+    pub fn get_notifications(&self) -> Vec<String> {
+        let mut result = vec![];
         let conn = self.pool.get().unwrap();
-        let _ = conn.query("", &[]); 
+        let _ = conn.query("", &[]);
         let notifications = conn.notifications();
         let mut iter = notifications.iter();
         while let Some(note) = iter.next().unwrap() {
@@ -253,14 +266,14 @@ impl Db {
         let conn = self.pool.get().unwrap();
         if listening {
             let _ = conn.execute("LISTEN salesforce_data", &[]);
-        }else {
+        } else {
             let _ = conn.execute("UNLISTEN salesforce_data", &[]);
         }
     }
 }
 
 impl Clone for Db {
-     fn clone(&self) -> Db {
+    fn clone(&self) -> Db {
         Db::new(self.config)
-     }
+    }
 }

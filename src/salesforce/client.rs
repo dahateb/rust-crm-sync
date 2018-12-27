@@ -1,8 +1,8 @@
+use config::SalesforceConfig;
+use reqwest::header::CONTENT_TYPE;
+use reqwest::{Client as ReqClient, Method, Request, RequestBuilder, Response};
 use std::collections::HashMap;
 use std::io::Read;
-use config::SalesforceConfig;
-use reqwest::{Client as ReqClient, Request, RequestBuilder, Response, Method};
-use reqwest::header::{CONTENT_TYPE};
 
 #[derive(Serialize, Deserialize)]
 pub struct LoginData {
@@ -66,7 +66,8 @@ impl Client {
     }
 
     pub fn get_resource<F>(&self, req_builder: F) -> Result<String, String>
-        where F: Fn(&String) -> String
+    where
+        F: Fn(&String) -> String,
     {
         let req = self.build_auth_request(Method::GET, req_builder);
         let mut response = try!(self.call(req.build().unwrap()));
@@ -75,55 +76,51 @@ impl Client {
         Ok(result)
     }
 
-    pub fn update_resource<F>(&self, data: String, req_builder: F) -> Result<String,String>
-        where F: Fn(&String) -> String
+    pub fn update_resource<F>(&self, data: String, req_builder: F) -> Result<String, String>
+    where
+        F: Fn(&String) -> String,
     {
         let builder = self.build_auth_request(Method::PATCH, req_builder);
         let mut req = builder.body(data).build().unwrap();
-        // = builder;
-        req.headers_mut().insert(CONTENT_TYPE, "application/json".parse().unwrap());
+        req.headers_mut()
+            .insert(CONTENT_TYPE, "application/json".parse().unwrap());
         let mut response = try!(self.call(req));
         let mut result = String::new();
         let _bytes_read = response.read_to_string(&mut result);
         Ok(result)
     }
 
-    pub fn create_resource<F>(&self,  data: String, req_builder: F) -> Result<String,String>
-        where F: Fn(&String) -> String
+    pub fn create_resource<F>(&self, data: String, req_builder: F) -> Result<String, String>
+    where
+        F: Fn(&String) -> String,
     {
         let builder = self.build_auth_request(Method::POST, req_builder);
         let mut req = builder.body(data).build().unwrap();
-        req.headers_mut().insert(CONTENT_TYPE, "application/json".parse().unwrap());
+        req.headers_mut()
+            .insert(CONTENT_TYPE, "application/json".parse().unwrap());
         let mut response = try!(self.call(req));
         let mut result = String::new();
         let _bytes_read = response.read_to_string(&mut result);
         Ok(result)
     }
 
-    fn call(&self, req: Request) -> Result<Response,String> {
-        let mut response = try!(self.client
-            .execute(req)
-            .map_err(|err| err.to_string()));
+    fn call(&self, req: Request) -> Result<Response, String> {
+        let mut response = try!(self.client.execute(req).map_err(|err| err.to_string()));
         if !response.status().is_success() {
             let mut result = String::new();
-            let _= response.read_to_string(&mut result);
+            let _ = response.read_to_string(&mut result);
             return Err(format!("{} {}", response.status(), result));
         }
         Ok(response)
     }
 
-    fn build_auth_request<F>(&self,method: Method, req_builder: F) -> RequestBuilder
-        where F: Fn(&String) -> String
+    fn build_auth_request<F>(&self, method: Method, req_builder: F) -> RequestBuilder
+    where
+        F: Fn(&String) -> String,
     {
         let ld = self.login_data.as_ref().unwrap();
         let uri = req_builder(&ld.instance_url);
         let req = self.client.request(method, uri.as_str());
         req.bearer_auth(ld.access_token.clone())
-        //let mut headers = HeaderMap::new();
-        //headers.insert(AUTHORIZATION, format!("Bearer {}", ld.access_token.clone()).parse().unwrap());
-        //headers.set(Authorization(Bearer { token: ld.access_token.clone() }));
-        //req.headers(headers);
-        //req.headers(headers);            
-        //req
     }
 }

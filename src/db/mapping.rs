@@ -24,10 +24,10 @@ pub fn sf_type_mapping(field_type: &String, length: u32) -> Result<String, Strin
     match *db_type {
         "varchar" => {
             if length > 255 {
-               return  Ok(String::from("text"));
+                return Ok(String::from("text"));
             }
-            Ok(format!("{}({})",db_type, length))
-        },
-        _ => Ok(db_type.to_string())
+            Ok(format!("{}({})", db_type, length))
+        }
+        _ => Ok(db_type.to_string()),
     }
 }

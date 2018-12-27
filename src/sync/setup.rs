@@ -1,10 +1,10 @@
+use db::objects::ObjectConfig;
 use db::Db;
+use salesforce::objects::SObject;
 use salesforce::Salesforce;
+use std::io::{self, Write};
 use std::sync::Arc;
 use std::sync::Mutex;
-use salesforce::objects::SObject;
-use db::objects::ObjectConfig;
-use std::io::{self, Write};
 
 const ERR_OBJECT_NOT_FOUND: &str = "Object not found";
 const ERR_CACHE_NOT_SETUP: &str = "Cache not setup";
@@ -31,13 +31,16 @@ impl Setup {
     }
 
     pub fn list_salesforce_objects<F>(&self, print_func: F) -> Result<usize, String>
-        where F: FnMut(&(u32, &String, bool)) 
+    where
+        F: FnMut(&(u32, &String, bool)),
     {
         let sf_objects = self.salesforce.get_objects()?;
         self.cache.lock().unwrap().sf_objects = Some(sf_objects);
-        let mut i:u32 = 0;
-        let result = self.cache
-            .lock().unwrap()
+        let mut i: u32 = 0;
+        let result = self
+            .cache
+            .lock()
+            .unwrap()
             .sf_objects
             .as_ref()
             .unwrap()
@@ -52,36 +55,40 @@ impl Setup {
     }
 
     pub fn list_db_objects<F>(&self, print_func: F) -> Result<usize, String>
-        where F: FnMut(&(u32, &String, u32)) 
+    where
+        F: FnMut(&(u32, &String, u32)),
     {
         let objects = self.db.get_selected_objects(-1)?;
         self.cache.lock().unwrap().db_objects = Some(objects);
-        let mut i:u32 = 0;
-        let count = self.cache
-            .lock().unwrap()
+        let mut i: u32 = 0;
+        let count = self
+            .cache
+            .lock()
+            .unwrap()
             .db_objects
             .as_ref()
             .unwrap()
             .iter()
             .map(|obj| {
                 i += 1;
-                (i,&obj.name, obj.count)
+                (i, &obj.name, obj.count)
             })
             .inspect(print_func)
             .count();
         Ok(count)
     }
 
-    pub fn setup_sf_object(&self,
-                           index: usize,
-                           setup_db_sync: bool)
-                           -> Result<(String, u64), String> {
+    pub fn setup_sf_object(
+        &self,
+        index: usize,
+        setup_db_sync: bool,
+    ) -> Result<(String, u64), String> {
         let cache = &self.cache.lock().unwrap();
         let item = &cache
             .sf_objects
             .as_ref()
             .ok_or(ERR_CACHE_NOT_SETUP)?
-            .get(index-1)
+            .get(index - 1)
             .ok_or(ERR_OBJECT_NOT_FOUND)?;
         // println!("selected object: {}", item.name);
         let describe = self.salesforce.describe_object(&item.name)?;
@@ -90,7 +97,8 @@ impl Setup {
         if setup_db_sync {
             self.db.add_channel_trigger(&item.name);
         }
-        let wrapper = self.salesforce
+        let wrapper = self
+            .salesforce
             .get_records_from_describe(&describe, &item.name)?;
         let mut row_count = 0;
         row_count += self.db.populate(&wrapper)?;

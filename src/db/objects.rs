@@ -1,5 +1,5 @@
-use serde_json;
 use salesforce::objects::{Field, SObjectConfiguration};
+use serde_json;
 
 #[derive(Debug)]
 pub struct ObjectConfig {
@@ -25,10 +25,11 @@ impl ObjectConfig {
     }
 
     pub fn get_db_field_names(&self) -> Vec<String> {
-        self.fields.iter()
-        .filter(|field| field.updateable && field.name != "Id")
-        .map(|field| field.name.to_lowercase())
-        .collect()
+        self.fields
+            .iter()
+            .filter(|field| field.updateable && field.name != "Id")
+            .map(|field| field.name.to_lowercase())
+            .collect()
     }
 }
 

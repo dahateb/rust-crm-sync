@@ -61,10 +61,11 @@ pub struct SObjectRowResultWrapper {
 }
 
 impl SObjectRowResultWrapper {
-    pub fn new(name: &String,
-               fields: &Vec<Field>,
-               describe_result: Value)
-               -> SObjectRowResultWrapper {
+    pub fn new(
+        name: &String,
+        fields: &Vec<Field>,
+        describe_result: Value,
+    ) -> SObjectRowResultWrapper {
         let rows_raw = describe_result["records"].as_array().unwrap();
         let mut result: HashMap<String, (Vec<String>, Vec<String>)> = HashMap::new();
         for row in rows_raw {

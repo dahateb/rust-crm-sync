@@ -1,9 +1,9 @@
-use std::sync::{Mutex, Arc};
+use config::SyncConfig;
+use db::objects::ObjectConfig;
 use db::Db;
 use salesforce::Salesforce;
-use config::SyncConfig;
-use std::sync::mpsc::{Sender};
-use db::objects::ObjectConfig;
+use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 use sync::executer::ExecuterInner;
 
 pub struct ExecuterInnerSF {
@@ -14,8 +14,11 @@ pub struct ExecuterInnerSF {
 }
 
 impl ExecuterInnerSF {
-    pub fn new(salesforce: Arc<Salesforce>,db: Arc<Db>,config: &'static SyncConfig)
-        -> ExecuterInnerSF {
+    pub fn new(
+        salesforce: Arc<Salesforce>,
+        db: Arc<Db>,
+        config: &'static SyncConfig,
+    ) -> ExecuterInnerSF {
         ExecuterInnerSF {
             db: db,
             salesforce: salesforce,
@@ -26,18 +29,19 @@ impl ExecuterInnerSF {
 }
 
 impl ExecuterInner for ExecuterInnerSF {
-
     fn execute(&self, sender: Sender<String>) {
         //println!("executing.... ");
         let objects: Vec<ObjectConfig> = self.db.get_selected_objects(1).unwrap();
         for i in 0..objects.len() {
             let fields = objects[i].get_field_names();
             let _ = sender.send(format!("{} {} {:?}", i + 1, objects[i].name, fields.len()));
-            let row_result = self.salesforce
+            let row_result = self
+                .salesforce
                 .get_last_updated_records(&objects[i], 1)
                 .unwrap();
             let _ = sender.send(format!("num rows to synch: {}", row_result.rows.len()));
-            let result = self.db
+            let result = self
+                .db
                 .upsert_object_rows(&row_result)
                 .map_err(|err| println!("{}", err));
             let mut row_count = result.unwrap();
@@ -74,5 +78,3 @@ impl ExecuterInner for ExecuterInnerSF {
         self.config.timeout
     }
 }
-
-
