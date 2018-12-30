@@ -31,7 +31,6 @@ impl ApiServer {
         let worker = Interval::new(Instant::now(), Duration::from_millis(1000))
             .for_each(move |instant| {
                 router.handle_async(instant);
-                //println!("fire; instant={:?}", instant);
                 Ok(())
             })
             .map_err(|e| panic!("interval errored; err={:?}", e));

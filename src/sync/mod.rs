@@ -229,7 +229,10 @@ impl Sync {
         }
         println!("Selected Object: {}", self.command);
         let notify = || println!(".");
-        let (name, row_count) = self.setup.setup_sf_object(index as usize, true, notify).unwrap();
+        let (name, row_count) = self
+            .setup
+            .setup_sf_object(index as usize, true, notify)
+            .unwrap();
         println!("Selected object: {}", name);
         println!("Synched {} rows", row_count);
     }

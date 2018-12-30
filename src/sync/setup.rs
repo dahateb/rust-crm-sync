@@ -87,23 +87,28 @@ impl Setup {
     where
         F: Fn(),
     {
-        let cache = self.cache.lock().unwrap();
-        let item = cache
-            .sf_objects
-            .as_ref()
-            .ok_or(ERR_CACHE_NOT_SETUP)?
-            .get(index - 1)
-            .ok_or(ERR_OBJECT_NOT_FOUND)?;
+        let name: String;
+        {
+            let cache = self.cache.lock().unwrap();
+            let item = cache
+                .sf_objects
+                .as_ref()
+                .ok_or(ERR_CACHE_NOT_SETUP)?
+                .get(index - 1)
+                .ok_or(ERR_OBJECT_NOT_FOUND)?;
+            name = item.name.clone();
+        }
+        
         // println!("selected object: {}", item.name);
-        let describe = self.salesforce.describe_object(&item.name)?;
+        let describe = self.salesforce.describe_object(&name)?;
         self.db.save_config_data(&describe);
-        self.db.create_object_table(&item.name, &describe.fields);
+        self.db.create_object_table(&name, &describe.fields);
         if setup_db_sync {
-            self.db.add_channel_trigger(&item.name);
+            self.db.add_channel_trigger(&name);
         }
         let wrapper = self
             .salesforce
-            .get_records_from_describe(&describe, &item.name)?;
+            .get_records_from_describe(&describe, &name)?;
         let mut row_count = 0;
         row_count += self.db.populate(&wrapper)?;
         //print!(".");
@@ -124,7 +129,7 @@ impl Setup {
             }
             next_wrapper_opt = self.salesforce.get_next_records(&describe, &next_wrapper);
         }
-        Ok((item.name.clone(), row_count))
+        Ok((name, row_count))
     }
 
     pub fn delete_db_object(&self, index: usize) -> Result<String, String> {

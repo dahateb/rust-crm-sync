@@ -271,9 +271,7 @@ impl Db {
         }
     }
     //@TODO check if table is locked
-    pub fn is_locked(&self) {
-
-    }
+    pub fn is_locked(&self) {}
 }
 
 impl Clone for Db {

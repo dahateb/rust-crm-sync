@@ -1,19 +1,17 @@
 use config::Config;
 use db::Db;
-use futures::{future, Future, Stream};
+use futures::future;
 use hyper::{Body, Method, Request, Response, StatusCode};
 use salesforce::Salesforce;
 use server::response;
-use std::collections::HashMap;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use sync::setup::Setup;
-use url::form_urlencoded;
 
 pub struct Router {
-    pub setup: Setup,
-    sender: Mutex<Sender<(String, u16)>>,
-    receiver: Mutex<Receiver<(String, u16)>>,
+    setup: Setup,
+    trigger_sender: Mutex<Sender<(String, u16)>>,
+    trigger_receiver: Mutex<Receiver<(String, u16)>>,
 }
 
 impl Router {
@@ -23,8 +21,8 @@ impl Router {
         let sf_arc = Arc::new(Salesforce::new(&config.salesforce));
         Router {
             setup: Setup::new(db_arc, sf_arc),
-            sender: Mutex::new(sender),
-            receiver: Mutex::new(receiver),
+            trigger_sender: Mutex::new(sender),
+            trigger_receiver: Mutex::new(receiver),
         }
     }
 
@@ -64,51 +62,25 @@ impl Router {
                 return response::build_json_response(res);
             }
             (&Method::POST, "/setup/new") => {
-                let sender = self.sender.lock().unwrap().clone();
-                let response_fut = req.into_body().concat2().map(move |chunk| {
-                    let params = form_urlencoded::parse(chunk.as_ref())
-                        .into_owned()
-                        .collect::<HashMap<String, String>>();
-                    let number = if let Some(n) = params.get("number") {
-                        if let Ok(v) = n.parse::<u16>() {
-                            v
-                        } else {
-                            return response::response_unprocessable(response::NOTNUMERIC);
-                        }
-                    } else {
-                        return response::response_unprocessable(response::MISSING);
-                    };
-                    let _ = sender.send((String::from("setup/new"), number));
-
-                    *response.body_mut() = Body::from("OK");
-                    *response.status_mut() = StatusCode::CREATED;
-                    response
-                });
-                return Box::new(response_fut);
-            },
+                let sender = self.trigger_sender.lock().unwrap().clone();
+                let body = req.into_body();
+                return response::response_notify(
+                    body,
+                    "/setup/new".to_owned(),
+                    StatusCode::CREATED,
+                    sender,
+                );
+            }
             (&Method::POST, "/setup/delete") => {
-                let sender = self.sender.lock().unwrap().clone();
-                let response_fut = req.into_body().concat2().map(move |chunk| {
-                    let params = form_urlencoded::parse(chunk.as_ref())
-                        .into_owned()
-                        .collect::<HashMap<String, String>>();
-                    let number = if let Some(n) = params.get("number") {
-                        if let Ok(v) = n.parse::<u16>() {
-                            v
-                        } else {
-                            return response::response_unprocessable(response::NOTNUMERIC);
-                        }
-                    } else {
-                        return response::response_unprocessable(response::MISSING);
-                    };
-                    let _ = sender.send((String::from("setup/delete"), number));
-
-                    *response.body_mut() = Body::from("OK");
-                    *response.status_mut() = StatusCode::OK;
-                    response
-                });
-                return Box::new(response_fut);
-            },
+                let sender = self.trigger_sender.lock().unwrap().clone();
+                let body = req.into_body();
+                return response::response_notify(
+                    body,
+                    "/setup/delete".to_owned(),
+                    StatusCode::OK,
+                    sender,
+                );
+            }
             _ => {
                 // Return 404 not found response.
                 *response.body_mut() = Body::from(response::NOTFOUND);
@@ -119,17 +91,18 @@ impl Router {
     }
 
     pub fn handle_async(&self, _instant: std::time::Instant) {
-        let recv = self.receiver.lock().unwrap();
+        let recv = self.trigger_receiver.lock().unwrap();
         while let Ok(message) = recv.try_recv() {
             println!("{}:{}", message.0, message.1);
             match message.0.as_ref() {
-                "setup/new" => {
+                "/setup/new" => {
                     let notify = || println!(".");
                     let _res = self.setup.setup_sf_object(message.1 as usize, true, notify);
-                },
-                "setup/delete" => {
+                }
+                "/setup/delete" => {
                     let _res = self.setup.delete_db_object(message.1 as usize);
-                },
+                    _res.map_err(|err| println!("{}", err));
+                }
                 _ => println!(""),
             }
         }
