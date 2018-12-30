@@ -1,14 +1,15 @@
+pub mod response;
 pub mod router;
 
 use config::Config;
-use db::Db;
 use futures::{future, Future};
 use hyper::service::{NewService, Service};
 use hyper::{Body, Error, Request, Response, Server};
-use salesforce::Salesforce;
 use server::router::Router;
 use std::sync::Arc;
-use sync::setup::Setup;
+use std::time::{Duration, Instant};
+use tokio::prelude::*;
+use tokio::timer::Interval;
 
 pub struct ApiServer {
     config: &'static Config,
@@ -17,22 +18,30 @@ pub struct ApiServer {
 
 impl ApiServer {
     pub fn start(config: &'static Config) {
-        let db_arc = Arc::new(Db::new(&config.db));
-        let sf_arc = Arc::new(Salesforce::new(&config.salesforce));
-        let router = Router {
-            setup: Setup::new(db_arc, sf_arc),
-        };
+        let router = Arc::new(Router::new(config));
         let addr = config.server.url.parse().unwrap();
         let server = ApiServer {
             config: config,
-            router: Arc::new(router),
+            router: router.clone(),
         };
         let server = Server::bind(&addr)
             .serve(server)
             .map_err(|e| eprintln!("error: {}", e));
-        println!("Serving at {}", addr);
 
-        hyper::rt::run(server); //<======
+        let worker = Interval::new(Instant::now(), Duration::from_millis(1000))
+            .for_each(move |instant| {
+                router.handle_async(instant);
+                //println!("fire; instant={:?}", instant);
+                Ok(())
+            })
+            .map_err(|e| panic!("interval errored; err={:?}", e));
+
+        hyper::rt::run(hyper::rt::lazy(move || {
+            println!("Serving at {}", addr);
+            hyper::rt::spawn(server); //<======
+            hyper::rt::spawn(worker);
+            Ok(())
+        }));
     }
 }
 
@@ -57,6 +66,6 @@ impl Service for ApiServer {
     type Error = Error;
     type Future = Box<Future<Item = Response<Body>, Error = Error> + Send>;
     fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
-        Box::new(future::ok(self.router.handle(req)))
+        self.router.handle(req)
     }
 }

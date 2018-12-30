@@ -270,6 +270,10 @@ impl Db {
             let _ = conn.execute("UNLISTEN salesforce_data", &[]);
         }
     }
+    //@TODO check if table is locked
+    pub fn is_locked(&self) {
+
+    }
 }
 
 impl Clone for Db {

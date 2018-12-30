@@ -78,11 +78,15 @@ impl Setup {
         Ok(result)
     }
 
-    pub fn setup_sf_object(
+    pub fn setup_sf_object<F>(
         &self,
         index: usize,
         setup_db_sync: bool,
-    ) -> Result<(String, u64), String> {
+        notify_func: F,
+    ) -> Result<(String, u64), String>
+    where
+        F: Fn(),
+    {
         let cache = self.cache.lock().unwrap();
         let item = cache
             .sf_objects
@@ -102,19 +106,20 @@ impl Setup {
             .get_records_from_describe(&describe, &item.name)?;
         let mut row_count = 0;
         row_count += self.db.populate(&wrapper)?;
-        print!(".");
+        //print!(".");
+        notify_func();
         io::stdout().flush().unwrap();
         // println!("Synched {} rows", row_count);
         let mut next_wrapper_opt = self.salesforce.get_next_records(&describe, &wrapper);
         while let Some(next_wrapper) = next_wrapper_opt {
             row_count += self.db.populate(&next_wrapper)?;
-            print!(".");
+            notify_func();
             io::stdout().flush().unwrap();
             // println!("Synched {} rows", row_count);
             if !next_wrapper.done {
                 // println!("Next Path: {}", next_wrapper.next_url);
             } else {
-                println!("");
+                notify_func();
                 // println!("Done: {} rows", row_count);
             }
             next_wrapper_opt = self.salesforce.get_next_records(&describe, &next_wrapper);

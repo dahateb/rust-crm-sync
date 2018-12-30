@@ -9,6 +9,8 @@ extern crate r2d2_postgres;
 extern crate reqwest;
 extern crate serde;
 extern crate time;
+extern crate tokio;
+extern crate url;
 
 #[macro_use]
 extern crate lazy_static;
