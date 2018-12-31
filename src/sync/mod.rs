@@ -6,7 +6,7 @@ use config::Config;
 use db::Db;
 use salesforce::Salesforce;
 use std::cell::RefCell;
-use std::io;
+use std::io::{self, Write};
 use std::str::FromStr;
 use std::string::String;
 use std::sync::Arc;
@@ -228,7 +228,10 @@ impl Sync {
             return;
         }
         println!("Selected Object: {}", self.command);
-        let notify = || println!(".");
+        let notify = |_: &str, _: u64| {
+            print!(".");
+            io::stdout().flush().unwrap();
+        };
         let (name, row_count) = self
             .setup
             .setup_sf_object(index as usize, true, notify)

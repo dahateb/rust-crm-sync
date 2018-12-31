@@ -46,18 +46,23 @@ impl ExecuterInner for ExecuterInnerDB {
         }
         //println!("{:?}", records_map);
         for key in records_map.keys() {
-            let records = self
+            let result = self
                 .db
                 .get_object_data_by_id(&key, records_map.get::<str>(&key).unwrap());
-            for rec in &records {
-                println!("{}", rec.to_json());
+            if result.is_ok() {
+                let records = result.unwrap();
+                for rec in &records {
+                    println!("{}", rec.to_json());
+                }
+                let ids = self.salesforce.push_records(&key, &records);
+                self.db.update_ids(&key, &ids.0);
+                for (err_id, error) in &ids.1 {
+                    self.db.set_error_state(&key, err_id, &error);
+                }
+                println!("{:?}", ids.0);
+            } else {
+                let _ = result.map_err(|err | println!("{}", err));
             }
-            let ids = self.salesforce.push_records(&key, &records);
-            self.db.update_ids(&key, &ids.0);
-            for (err_id, error) in &ids.1 {
-                self.db.set_error_state(&key, err_id, &error);
-            }
-            println!("{:?}", ids.0);
         }
     }
 

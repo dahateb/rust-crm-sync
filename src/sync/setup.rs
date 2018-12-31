@@ -2,7 +2,6 @@ use db::objects::ObjectConfig;
 use db::Db;
 use salesforce::objects::SObject;
 use salesforce::Salesforce;
-use std::io::{self, Write};
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -78,14 +77,35 @@ impl Setup {
         Ok(result)
     }
 
+    pub fn object_exists(&self, index: usize,) -> bool {
+        let name: String;
+        {
+            let cache = self.cache.lock().unwrap();
+            let item = cache
+                .sf_objects
+                .as_ref()
+                .ok_or(ERR_CACHE_NOT_SETUP)
+                .unwrap()
+                .get(index - 1)
+                .ok_or(ERR_OBJECT_NOT_FOUND)
+                .unwrap();
+            name = item.name.clone();
+        }
+
+        match self.db.get_object_config(&name) {
+            Some(config) => return true,
+            None => return false
+        }
+    } 
+
     pub fn setup_sf_object<F>(
         &self,
         index: usize,
         setup_db_sync: bool,
-        notify_func: F,
+        notify: F,
     ) -> Result<(String, u64), String>
     where
-        F: Fn(),
+        F: Fn(&str, u64),
     {
         let name: String;
         {
@@ -98,8 +118,8 @@ impl Setup {
                 .ok_or(ERR_OBJECT_NOT_FOUND)?;
             name = item.name.clone();
         }
-        
-        // println!("selected object: {}", item.name);
+
+        notify(&format!("Selected Object: {}", name), 0);
         let describe = self.salesforce.describe_object(&name)?;
         self.db.save_config_data(&describe);
         self.db.create_object_table(&name, &describe.fields);
@@ -111,21 +131,16 @@ impl Setup {
             .get_records_from_describe(&describe, &name)?;
         let mut row_count = 0;
         row_count += self.db.populate(&wrapper)?;
-        //print!(".");
-        notify_func();
-        io::stdout().flush().unwrap();
-        // println!("Synched {} rows", row_count);
+        notify(&format!("Sync started for {}", name), row_count);
+
         let mut next_wrapper_opt = self.salesforce.get_next_records(&describe, &wrapper);
         while let Some(next_wrapper) = next_wrapper_opt {
             row_count += self.db.populate(&next_wrapper)?;
-            notify_func();
-            io::stdout().flush().unwrap();
-            // println!("Synched {} rows", row_count);
+            notify(&format!("Sync running for {}", name), row_count);
             if !next_wrapper.done {
                 // println!("Next Path: {}", next_wrapper.next_url);
             } else {
-                notify_func();
-                // println!("Done: {} rows", row_count);
+                notify(&format!("Sync ended for {}", name), row_count);
             }
             next_wrapper_opt = self.salesforce.get_next_records(&describe, &next_wrapper);
         }

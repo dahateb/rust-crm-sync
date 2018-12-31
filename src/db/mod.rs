@@ -98,13 +98,30 @@ impl Db {
         Ok(result)
     }
 
-    pub fn get_object_data_by_id(&self, object_name: &String, ids: &Vec<i32>) -> Vec<Record> {
+    pub fn get_object_config(&self, object_name: &String) -> Option<ObjectConfig> {
         let conn = self.pool.get().unwrap();
         let query = "SELECT id, db_name, fields FROM config.objects WHERE db_name = $1";
         let rows = conn.query(query, &[object_name]).unwrap();
+        if rows.len() == 0 {
+            return None;
+        }
         let row = rows.iter().next().unwrap();
-        let config: ObjectConfig =
-            ObjectConfig::new(row.get(0), row.get(1), ids.len() as u32, row.get(2));
+        let config: ObjectConfig = ObjectConfig::new(row.get(0), row.get(1), 0, row.get(2));
+        Some(config)
+    }
+
+    pub fn get_object_data_by_id(
+        &self,
+        object_name: &String,
+        ids: &Vec<i32>,
+    ) -> Result<Vec<Record>, String> {
+        let conn = self.pool.get().unwrap();
+        let mut config;
+        match self.get_object_config(object_name) {
+            Some(conf) => config = conf,
+            None => return Err("Object not found".to_owned()),
+        }
+        config.count = ids.len() as u32;
         let fieldnames = config.get_db_field_names();
         let mut query = format!(
             "SELECT id, sfid, {} FROM salesforce.{}",
@@ -128,7 +145,7 @@ impl Db {
             //println!("{}",record.get_json());
             res.push(record);
         }
-        res
+        Ok(res)
     }
 
     pub fn update_last_sync_time(&self, id: i32) {
@@ -270,8 +287,6 @@ impl Db {
             let _ = conn.execute("UNLISTEN salesforce_data", &[]);
         }
     }
-    //@TODO check if table is locked
-    pub fn is_locked(&self) {}
 }
 
 impl Clone for Db {

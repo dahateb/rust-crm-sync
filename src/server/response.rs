@@ -1,7 +1,7 @@
 use futures::{future, Future, Stream};
 use hyper::{Body, Response, StatusCode};
 use std::collections::HashMap;
-use std::sync::mpsc::{ Sender};
+use std::sync::mpsc::Sender;
 use url::form_urlencoded;
 
 pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
