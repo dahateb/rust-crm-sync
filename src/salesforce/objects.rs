@@ -7,7 +7,7 @@ pub struct SObjectList {
     pub sobjects: Vec<SObject>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct SObject {
     label: String,
     pub createable: bool,
@@ -43,7 +43,7 @@ impl SObjectConfiguration for SObjectDescribe {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Field {
     pub name: String,
     pub length: u32,

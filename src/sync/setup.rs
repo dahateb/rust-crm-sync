@@ -8,16 +8,17 @@ use std::sync::Mutex;
 const ERR_OBJECT_NOT_FOUND: &str = "Object not found";
 const ERR_CACHE_NOT_SETUP: &str = "Cache not setup";
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct SyncObjectCache {
     pub sf_objects: Option<Vec<SObject>>,
     pub db_objects: Option<Vec<ObjectConfig>>,
 }
 
+#[derive(Clone)]
 pub struct Setup {
     salesforce: Arc<Salesforce>,
     db: Arc<Db>,
-    cache: Mutex<SyncObjectCache>,
+    cache: Arc<Mutex<SyncObjectCache>>,
 }
 
 impl Setup {
@@ -77,7 +78,7 @@ impl Setup {
         Ok(result)
     }
 
-    pub fn object_exists(&self, index: usize,) -> bool {
+    pub fn sf_object_exists(&self, index: usize,) -> bool {
         let name: String;
         {
             let cache = self.cache.lock().unwrap();
@@ -91,7 +92,7 @@ impl Setup {
                 .unwrap();
             name = item.name.clone();
         }
-
+        println!("{}", name);
         match self.db.get_object_config(&name) {
             Some(config) => return true,
             None => return false

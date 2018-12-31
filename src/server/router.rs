@@ -11,8 +11,8 @@ use sync::setup::Setup;
 
 pub struct Router {
     setup: Setup,
-    trigger_sender: Mutex<Sender<(String, u16)>>,
-    trigger_receiver: Mutex<Receiver<(String, u16)>>,
+    trigger_sender: Mutex<Sender<(String, usize)>>,
+    trigger_receiver: Mutex<Receiver<(String, usize)>>,
     message_sender: Mutex<Sender<(String, u64, Instant)>>,
     message_receiver: Mutex<Receiver<(String, u64, Instant)>>,
 }
@@ -68,25 +68,21 @@ impl Router {
                 return response::build_json_response(res);
             }
             (&Method::POST, "/setup/new") => {
-                //check if object already exists
-                //self.setup.object_exists(index: usize)
-                let sender = self.trigger_sender.lock().unwrap().clone();
-                let body = req.into_body();
                 return response::response_notify(
-                    body,
+                    req.into_body(),
                     "/setup/new".to_owned(),
                     StatusCode::CREATED,
-                    sender,
+                    self.trigger_sender.lock().unwrap().clone(),
+                    self.setup.clone()
                 );
             }
             (&Method::POST, "/setup/delete") => {
-                let sender = self.trigger_sender.lock().unwrap().clone();
-                let body = req.into_body();
                 return response::response_notify(
-                    body,
+                    req.into_body(),
                     "/setup/delete".to_owned(),
                     StatusCode::OK,
-                    sender,
+                    self.trigger_sender.lock().unwrap().clone(),
+                    self.setup.clone()
                 );
             }
             (&Method::GET, "/messages") => {
@@ -119,15 +115,19 @@ impl Router {
             match message.0.as_ref() {
                 "/setup/new" => {
                     let sender = self.message_sender.lock().unwrap().clone();
-                    let notify = |notification: &str, count: u64| {
-                        let _ = sender.send((notification.to_owned(), count, Instant::now()));
-                    };
-                    let _res = self.setup.setup_sf_object(message.1 as usize, true, notify);
+                    let setup = self.setup.clone();
+                    //asynchronous to allow for multiple objects
+                    std::thread::spawn(move ||{
+                        let notify = |notification: &str, count: u64| {
+                            let _ = sender.send((notification.to_owned(), count, Instant::now()));
+                        };
+                        let _res = setup.setup_sf_object(message.1, true, notify);
+                    });                     
                 }
                 "/setup/delete" => {
                     let _res = self
                         .setup
-                        .delete_db_object(message.1 as usize)
+                        .delete_db_object(message.1)
                         .map_err(|err| println!("{}", err));
                 }
                 _ => println!(""),

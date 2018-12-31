@@ -101,7 +101,7 @@ impl Db {
     pub fn get_object_config(&self, object_name: &String) -> Option<ObjectConfig> {
         let conn = self.pool.get().unwrap();
         let query = "SELECT id, db_name, fields FROM config.objects WHERE db_name = $1";
-        let rows = conn.query(query, &[object_name]).unwrap();
+        let rows = conn.query(query, &[&object_name.to_lowercase()]).unwrap();
         if rows.len() == 0 {
             return None;
         }

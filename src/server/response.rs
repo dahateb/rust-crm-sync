@@ -3,6 +3,7 @@ use hyper::{Body, Response, StatusCode};
 use std::collections::HashMap;
 use std::sync::mpsc::Sender;
 use url::form_urlencoded;
+use sync::setup::Setup;
 
 pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
@@ -10,6 +11,8 @@ pub static NOTFOUND: &[u8] = b"Not Found";
 pub static INDEX: &[u8] = b"<h4>===> SYNC API <===</h4>";
 pub static MISSING: &[u8] = b"Missing field";
 pub static NOTNUMERIC: &[u8] = b"Number field is not numeric";
+pub static OBJECT_EXIST: &[u8] = b"Object exists already";
+pub static OBJECT_NOT_EXIST: &[u8] = b"Object doesn't exist";
 
 pub fn build_json_response(res: String) -> BoxFut {
     let body = Body::from(format!("[{}]", res));
@@ -32,14 +35,15 @@ pub fn response_notify(
     body: Body,
     route: String,
     status: StatusCode,
-    sender: Sender<(String, u16)>,
+    sender: Sender<(String, usize)>,
+    setup: Setup
 ) -> BoxFut {
     Box::new(body.concat2().map(move |chunk| {
         let params = form_urlencoded::parse(chunk.as_ref())
             .into_owned()
             .collect::<HashMap<String, String>>();
         let number = if let Some(n) = params.get("number") {
-            if let Ok(v) = n.parse::<u16>() {
+            if let Ok(v) = n.parse::<usize>() {
                 v
             } else {
                 return response_unprocessable(NOTNUMERIC);
@@ -47,6 +51,10 @@ pub fn response_notify(
         } else {
             return response_unprocessable(MISSING);
         };
+        let exists = setup.sf_object_exists(number);
+        if exists && route == "/setup/new" {
+            return response_unprocessable(OBJECT_EXIST);
+        } 
         let _ = sender.send((route, number));
 
         Response::builder()

@@ -1,7 +1,7 @@
 use salesforce::objects::{Field, SObjectConfiguration};
 use serde_json;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ObjectConfig {
     pub id: i32,
     pub name: String,
