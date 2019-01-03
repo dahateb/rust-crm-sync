@@ -10,6 +10,7 @@ use std::time::Instant;
 use sync::setup::Setup;
 
 pub struct Router {
+    sync_toggle_switch: Arc<Mutex<bool>>,
     setup: Setup,
     trigger_sender: Mutex<Sender<(String, usize)>>,
     trigger_receiver: Mutex<Receiver<(String, usize)>>,
@@ -18,12 +19,13 @@ pub struct Router {
 }
 
 impl Router {
-    pub fn new(config: &'static Config) -> Router {
+    pub fn new(config: &'static Config, sync_toggle_switch: Arc<Mutex<bool>>) -> Router {
         let (sender, receiver) = channel();
         let (tx, rx) = channel();
         let db_arc = Arc::new(Db::new(&config.db));
         let sf_arc = Arc::new(Salesforce::new(&config.salesforce));
         Router {
+            sync_toggle_switch,
             setup: Setup::new(db_arc, sf_arc),
             trigger_sender: Mutex::new(sender),
             trigger_receiver: Mutex::new(receiver),
@@ -73,7 +75,7 @@ impl Router {
                     "/setup/new".to_owned(),
                     StatusCode::CREATED,
                     self.trigger_sender.lock().unwrap().clone(),
-                    self.setup.clone()
+                    self.setup.clone(),
                 );
             }
             (&Method::POST, "/setup/delete") => {
@@ -82,7 +84,7 @@ impl Router {
                     "/setup/delete".to_owned(),
                     StatusCode::OK,
                     self.trigger_sender.lock().unwrap().clone(),
-                    self.setup.clone()
+                    self.setup.clone(),
                 );
             }
             (&Method::GET, "/messages") => {
@@ -98,6 +100,14 @@ impl Router {
                     result.push(json.to_string());
                 }
                 return response::build_json_response(result.join(","));
+            }
+            (&Method::PUT, "/sync/start") => {
+                *self.sync_toggle_switch.lock().unwrap() = true;
+                *response.body_mut() = Body::from(json!({"sync_running": true}).to_string());
+            }
+            (&Method::PUT, "/sync/stop") => {
+                *self.sync_toggle_switch.lock().unwrap() = false;
+                *response.body_mut() = Body::from(json!({"sync_running": false}).to_string());
             }
             _ => {
                 // Return 404 not found response.
@@ -117,12 +127,12 @@ impl Router {
                     let sender = self.message_sender.lock().unwrap().clone();
                     let setup = self.setup.clone();
                     //asynchronous to allow for multiple objects
-                    std::thread::spawn(move ||{
+                    std::thread::spawn(move || {
                         let notify = |notification: &str, count: u64| {
                             let _ = sender.send((notification.to_owned(), count, Instant::now()));
                         };
                         let _res = setup.setup_sf_object(message.1, true, notify);
-                    });                     
+                    });
                 }
                 "/setup/delete" => {
                     let _res = self

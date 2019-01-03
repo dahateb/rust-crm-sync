@@ -1,3 +1,4 @@
+pub mod executer;
 pub mod response;
 pub mod router;
 
@@ -5,8 +6,9 @@ use config::Config;
 use futures::{future, Future};
 use hyper::service::{NewService, Service};
 use hyper::{Body, Error, Request, Response, Server};
+use server::executer::Executer2;
 use server::router::Router;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::prelude::*;
 use tokio::timer::Interval;
@@ -18,7 +20,8 @@ pub struct ApiServer {
 
 impl ApiServer {
     pub fn start(config: &'static Config) {
-        let router = Arc::new(Router::new(config));
+        let executer = Executer2::new();
+        let router = Arc::new(Router::new(config, executer.toggle_switch()));
         let addr = config.server.url.parse().unwrap();
         let server = ApiServer {
             config: config,
@@ -26,19 +29,32 @@ impl ApiServer {
         };
         let server = Server::bind(&addr)
             .serve(server)
-            .map_err(|e| eprintln!("error: {}", e));
+            .map_err(|e| eprintln!("server error: {}", e));
 
         let worker = Interval::new(Instant::now(), Duration::from_millis(1000))
             .for_each(move |instant| {
                 router.handle_async(instant);
                 Ok(())
             })
-            .map_err(|e| panic!("interval errored; err={:?}", e));
-
+            .map_err(|e| eprintln!("worker errored; err={:?}", e));
+        let skip_switch = executer.toggle_switch();
+        let executer_worker =
+            Interval::new(Instant::now(), Duration::from_millis(config.sync.timeout))
+                .for_each(move |instant| {
+                    {
+                        if !*skip_switch.lock().unwrap() {
+                            return Ok(());
+                        }
+                    }
+                    executer.execute(instant);
+                    Ok(())
+                })
+                .map_err(|e| eprintln!("executer errored; err={:?}", e));
         hyper::rt::run(hyper::rt::lazy(move || {
             println!("Serving at {}", addr);
             hyper::rt::spawn(server); //<======
             hyper::rt::spawn(worker);
+            hyper::rt::spawn(executer_worker);
             Ok(())
         }));
     }

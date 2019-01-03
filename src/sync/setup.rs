@@ -78,7 +78,7 @@ impl Setup {
         Ok(result)
     }
 
-    pub fn sf_object_exists(&self, index: usize,) -> bool {
+    pub fn sf_object_exists(&self, index: usize) -> bool {
         let name: String;
         {
             let cache = self.cache.lock().unwrap();
@@ -95,9 +95,9 @@ impl Setup {
         println!("{}", name);
         match self.db.get_object_config(&name) {
             Some(config) => return true,
-            None => return false
+            None => return false,
         }
-    } 
+    }
 
     pub fn setup_sf_object<F>(
         &self,

@@ -2,8 +2,8 @@ use futures::{future, Future, Stream};
 use hyper::{Body, Response, StatusCode};
 use std::collections::HashMap;
 use std::sync::mpsc::Sender;
-use url::form_urlencoded;
 use sync::setup::Setup;
+use url::form_urlencoded;
 
 pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
@@ -36,7 +36,7 @@ pub fn response_notify(
     route: String,
     status: StatusCode,
     sender: Sender<(String, usize)>,
-    setup: Setup
+    setup: Setup,
 ) -> BoxFut {
     Box::new(body.concat2().map(move |chunk| {
         let params = form_urlencoded::parse(chunk.as_ref())
@@ -54,7 +54,7 @@ pub fn response_notify(
         let exists = setup.sf_object_exists(number);
         if exists && route == "/setup/new" {
             return response_unprocessable(OBJECT_EXIST);
-        } 
+        }
         let _ = sender.send((route, number));
 
         Response::builder()
