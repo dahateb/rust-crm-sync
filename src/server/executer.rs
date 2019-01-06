@@ -1,10 +1,10 @@
-use std::sync::{Arc, Mutex};
-use std::time::Instant;
-use std::thread;
-use sync::executer::{ExecuterInner, executer_db::ExecuterInnerDB, executer_sf::ExecuterInnerSF};
+use config::SyncConfig;
 use db::Db;
 use salesforce::Salesforce;
-use config::SyncConfig;
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Instant;
+use sync::executer::{executer_db::ExecuterInnerDB, executer_sf::ExecuterInnerSF, ExecuterInner};
 
 pub struct Executer2 {
     toggle_switch: Arc<Mutex<bool>>,
@@ -17,7 +17,7 @@ impl Executer2 {
         let inner_db = ExecuterInnerDB::new(sf_arc, db_arc, config);
         Executer2 {
             toggle_switch: Arc::new(Mutex::new(false)),
-            inners: vec![Arc::new(inner_sf), Arc::new(inner_db)]
+            inners: vec![Arc::new(inner_sf), Arc::new(inner_db)],
         }
     }
 
@@ -26,7 +26,7 @@ impl Executer2 {
         for val in self.inners.iter() {
             let local_self = val.clone();
             thread::spawn(move || {
-                println!("{}", local_self);  
+                println!("{}", local_self);
             });
         }
     }

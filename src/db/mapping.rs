@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use salesforce::objects::Field;
 
 static DEFAULT: &str = "varchar";
 
@@ -19,14 +20,14 @@ lazy_static! {
     };
 }
 
-pub fn sf_type_mapping(field_type: &String, length: u32) -> Result<String, String> {
-    let db_type = TYPEMAP.get(field_type).unwrap_or(&DEFAULT);
+pub fn sf_type_mapping(field: &Field) -> Result<String, String> {
+    let db_type = TYPEMAP.get(&field.sf_type).unwrap_or(&DEFAULT);
     match *db_type {
         "varchar" => {
-            if length > 255 {
+            if field.length > 255 || field.calculated {
                 return Ok(String::from("text"));
             }
-            Ok(format!("{}({})", db_type, length))
+            Ok(format!("{}({})", db_type, field.length))
         }
         _ => Ok(db_type.to_string()),
     }

@@ -51,7 +51,7 @@ impl Db {
             if field.name == "Id" || field.sf_type == "address" {
                 continue;
             }
-            let mapping = mapping::sf_type_mapping(&field.sf_type, field.length).unwrap();
+            let mapping = mapping::sf_type_mapping(&field).unwrap();
             query_builder.add_field(field.name.as_str(), mapping);
         }
         query_builder.add_field("_s_error", "TEXT".to_string());

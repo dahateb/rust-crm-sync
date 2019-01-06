@@ -51,6 +51,7 @@ pub struct Field {
     #[serde(rename = "type")]
     pub sf_type: String,
     pub updateable: bool,
+    pub calculated: bool,
 }
 
 pub struct SObjectRowResultWrapper {

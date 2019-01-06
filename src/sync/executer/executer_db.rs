@@ -2,9 +2,9 @@ use config::SyncConfig;
 use db::Db;
 use salesforce::Salesforce;
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
-use std::fmt;
 use sync::executer::ExecuterInner;
 
 pub struct ExecuterInnerDB {
@@ -62,7 +62,7 @@ impl ExecuterInner for ExecuterInnerDB {
                 }
                 println!("{:?}", ids.0);
             } else {
-                let _ = result.map_err(|err | println!("{}", err));
+                let _ = result.map_err(|err| println!("{}", err));
             }
         }
     }

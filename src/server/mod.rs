@@ -3,17 +3,17 @@ pub mod response;
 pub mod router;
 
 use config::Config;
+use db::Db;
 use futures::{future, Future};
 use hyper::service::{NewService, Service};
 use hyper::{Body, Error, Request, Response, Server};
+use salesforce::Salesforce;
 use server::executer::Executer2;
 use server::router::Router;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use std::time::{Duration, Instant};
 use tokio::prelude::*;
 use tokio::timer::Interval;
-use db::Db;
-use salesforce::Salesforce;
 
 pub struct ApiServer {
     config: &'static Config,
@@ -24,6 +24,7 @@ impl ApiServer {
     pub fn start(config: &'static Config) {
         let sf_arc = Arc::new(Salesforce::new(&config.salesforce));
         let db_arc = Arc::new(Db::new(&config.db));
+        //let (tx, rx) = channel();
         let executer = Executer2::new(sf_arc.clone(), db_arc.clone(), &config.sync);
         let router = Arc::new(Router::new(sf_arc, db_arc, executer.toggle_switch()));
         let addr = config.server.url.parse().unwrap();

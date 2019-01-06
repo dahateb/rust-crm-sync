@@ -1,7 +1,8 @@
 use futures::{future, Future, Stream};
 use hyper::{Body, Response, StatusCode};
 use std::collections::HashMap;
-use std::sync::mpsc::Sender;
+//use std::sync::mpsc::Sender;
+use crossbeam_channel::Sender;
 use sync::setup::Setup;
 use url::form_urlencoded;
 

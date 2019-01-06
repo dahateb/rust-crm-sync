@@ -1,10 +1,9 @@
-use config::Config;
 use db::Db;
 use futures::future;
 use hyper::{Body, Method, Request, Response, StatusCode};
 use salesforce::Salesforce;
 use server::response;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use crossbeam_channel::{unbounded, Sender, Receiver};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use sync::setup::Setup;
@@ -12,23 +11,27 @@ use sync::setup::Setup;
 pub struct Router {
     sync_toggle_switch: Arc<Mutex<bool>>,
     setup: Setup,
-    trigger_sender: Mutex<Sender<(String, usize)>>,
-    trigger_receiver: Mutex<Receiver<(String, usize)>>,
-    message_sender: Mutex<Sender<(String, u64, Instant)>>,
-    message_receiver: Mutex<Receiver<(String, u64, Instant)>>,
+    trigger_sender: Sender<(String, usize)>,
+    trigger_receiver: Receiver<(String, usize)>,
+    message_sender: Sender<(String, u64, Instant)>,
+    message_receiver: Receiver<(String, u64, Instant)>,
 }
 
 impl Router {
-    pub fn new(sf_arc: Arc<Salesforce>, db_arc: Arc<Db>, sync_toggle_switch: Arc<Mutex<bool>>) -> Router {
-        let (sender, receiver) = channel();
-        let (tx, rx) = channel();
+    pub fn new(
+        sf_arc: Arc<Salesforce>,
+        db_arc: Arc<Db>,
+        sync_toggle_switch: Arc<Mutex<bool>>,
+    ) -> Router {
+        let (sender, receiver) = unbounded();
+        let (tx, rx) = unbounded();
         Router {
             sync_toggle_switch,
             setup: Setup::new(db_arc, sf_arc),
-            trigger_sender: Mutex::new(sender),
-            trigger_receiver: Mutex::new(receiver),
-            message_sender: Mutex::new(tx),
-            message_receiver: Mutex::new(rx),
+            trigger_sender: sender,
+            trigger_receiver: receiver,
+            message_sender: tx,
+            message_receiver: rx,
         }
     }
 
@@ -72,7 +75,7 @@ impl Router {
                     req.into_body(),
                     "/setup/new".to_owned(),
                     StatusCode::CREATED,
-                    self.trigger_sender.lock().unwrap().clone(),
+                    self.trigger_sender.clone(),
                     self.setup.clone(),
                 );
             }
@@ -81,13 +84,13 @@ impl Router {
                     req.into_body(),
                     "/setup/delete".to_owned(),
                     StatusCode::OK,
-                    self.trigger_sender.lock().unwrap().clone(),
+                    self.trigger_sender.clone(),
                     self.setup.clone(),
                 );
             }
             (&Method::GET, "/messages") => {
                 let mut result = Vec::new();
-                let recv = self.message_receiver.lock().unwrap();
+                let recv = self.message_receiver.clone();
                 while let Ok(message) = recv.try_recv() {
                     let timestamp = format!("{:?}", message.2);
                     let json = json!({
@@ -117,12 +120,12 @@ impl Router {
     }
 
     pub fn handle_async(&self, _instant: std::time::Instant) {
-        let recv = self.trigger_receiver.lock().unwrap();
+        let recv = self.trigger_receiver.clone();
         while let Ok(message) = recv.try_recv() {
             println!("{}:{}", message.0, message.1);
             match message.0.as_ref() {
                 "/setup/new" => {
-                    let sender = self.message_sender.lock().unwrap().clone();
+                    let sender = self.message_sender.clone();
                     let setup = self.setup.clone();
                     //asynchronous to allow for multiple objects
                     std::thread::spawn(move || {

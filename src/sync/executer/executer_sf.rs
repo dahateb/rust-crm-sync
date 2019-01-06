@@ -2,9 +2,9 @@ use config::SyncConfig;
 use db::objects::ObjectConfig;
 use db::Db;
 use salesforce::Salesforce;
+use std::fmt;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
-use std::fmt;
 use sync::executer::ExecuterInner;
 
 pub struct ExecuterInnerSF {

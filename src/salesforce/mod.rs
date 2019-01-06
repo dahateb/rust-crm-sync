@@ -50,6 +50,7 @@ impl Salesforce {
             )
         };
         let posted_str = self.client.get_resource(req_builder).unwrap();
+        //println!("{}", posted_str);
         let object: SObjectDescribe = serde_json::from_str(posted_str.as_str()).unwrap();
         Ok(object)
     }
