@@ -3,6 +3,7 @@ pub mod response;
 pub mod router;
 
 use config::Config;
+use crossbeam_channel::bounded;
 use db::Db;
 use futures::{future, Future};
 use hyper::service::{NewService, Service};
@@ -10,8 +11,9 @@ use hyper::{Body, Error, Request, Response, Server};
 use salesforce::Salesforce;
 use server::executer::Executer2;
 use server::router::Router;
-use std::sync::{Arc};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
+use sync::executer::{MESSAGE_CHANNEL_SIZE, send_with_clear};
 use tokio::prelude::*;
 use tokio::timer::Interval;
 
@@ -24,9 +26,14 @@ impl ApiServer {
     pub fn start(config: &'static Config) {
         let sf_arc = Arc::new(Salesforce::new(&config.salesforce));
         let db_arc = Arc::new(Db::new(&config.db));
-        //let (tx, rx) = channel();
+        let (tx, rx) = bounded(MESSAGE_CHANNEL_SIZE);
         let executer = Executer2::new(sf_arc.clone(), db_arc.clone(), &config.sync);
-        let router = Arc::new(Router::new(sf_arc, db_arc, executer.toggle_switch()));
+        let router = Arc::new(Router::new(
+            sf_arc,
+            db_arc,
+            rx.clone(),
+            executer.toggle_switch(),
+        ));
         let addr = config.server.url.parse().unwrap();
         let server = ApiServer {
             config: config,
@@ -51,7 +58,9 @@ impl ApiServer {
                             return Ok(());
                         }
                     }
-                    executer.execute(instant);
+                    executer.execute(tx.clone(), rx.clone());
+                    let note = format!("{:?}", instant);
+                    send_with_clear(&note, &tx, &rx);
                     Ok(())
                 })
                 .map_err(|e| eprintln!("executer errored; err={:?}", e));

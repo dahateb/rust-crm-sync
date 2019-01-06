@@ -1,9 +1,9 @@
+use crossbeam_channel::{unbounded, Receiver, Sender};
 use db::Db;
 use futures::future;
 use hyper::{Body, Method, Request, Response, StatusCode};
 use salesforce::Salesforce;
 use server::response;
-use crossbeam_channel::{unbounded, Sender, Receiver};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use sync::setup::Setup;
@@ -15,12 +15,14 @@ pub struct Router {
     trigger_receiver: Receiver<(String, usize)>,
     message_sender: Sender<(String, u64, Instant)>,
     message_receiver: Receiver<(String, u64, Instant)>,
+    sync_receiver: Receiver<String>,
 }
 
 impl Router {
     pub fn new(
         sf_arc: Arc<Salesforce>,
         db_arc: Arc<Db>,
+        sync_receiver: Receiver<String>,
         sync_toggle_switch: Arc<Mutex<bool>>,
     ) -> Router {
         let (sender, receiver) = unbounded();
@@ -32,6 +34,7 @@ impl Router {
             trigger_receiver: receiver,
             message_sender: tx,
             message_receiver: rx,
+            sync_receiver,
         }
     }
 
@@ -109,6 +112,15 @@ impl Router {
             (&Method::PUT, "/sync/stop") => {
                 *self.sync_toggle_switch.lock().unwrap() = false;
                 *response.body_mut() = Body::from(json!({"sync_running": false}).to_string());
+            }
+            (&Method::GET, "/sync/messages") => {
+                let mut result = Vec::new();
+                let recv = self.sync_receiver.clone();
+                while let Ok(message) = recv.try_recv() {
+                    let json = json!({ "message": message });
+                    result.push(json.to_string());
+                }
+                return response::build_json_response(result.join(","));
             }
             _ => {
                 // Return 404 not found response.

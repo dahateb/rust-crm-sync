@@ -1,9 +1,9 @@
 use config::SyncConfig;
+use crossbeam_channel::{Receiver, Sender};
 use db::Db;
 use salesforce::Salesforce;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Instant;
 use sync::executer::{executer_db::ExecuterInnerDB, executer_sf::ExecuterInnerSF, ExecuterInner};
 
 pub struct Executer2 {
@@ -21,12 +21,15 @@ impl Executer2 {
         }
     }
 
-    pub fn execute(&self, _instant: Instant) {
-        println!("executer {}", *self.toggle_switch.lock().unwrap());
+    pub fn execute(&self, sender: Sender<String>, receiver: Receiver<String>) {
+      //  println!("executer {}", *self.toggle_switch.lock().unwrap());
         for val in self.inners.iter() {
             let local_self = val.clone();
+            let tx = sender.clone();
+            let rx = receiver.clone();
             thread::spawn(move || {
-                println!("{}", local_self);
+                local_self.execute(tx, rx);
+                // println!("{}", local_self);
             });
         }
     }

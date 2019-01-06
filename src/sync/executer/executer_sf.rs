@@ -1,11 +1,11 @@
 use config::SyncConfig;
+use crossbeam_channel::{Receiver, Sender};
 use db::objects::ObjectConfig;
 use db::Db;
 use salesforce::Salesforce;
 use std::fmt;
-use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
-use sync::executer::ExecuterInner;
+use sync::executer::{send_with_clear, ExecuterInner};
 
 pub struct ExecuterInnerSF {
     db: Arc<Db>,
@@ -30,17 +30,19 @@ impl ExecuterInnerSF {
 }
 
 impl ExecuterInner for ExecuterInnerSF {
-    fn execute(&self, sender: Sender<String>) {
+    fn execute(&self, sender: Sender<String>, receiver: Receiver<String>) {
         //println!("executing.... ");
         let objects: Vec<ObjectConfig> = self.db.get_selected_objects(1).unwrap();
         for i in 0..objects.len() {
             let fields = objects[i].get_field_names();
-            let _ = sender.send(format!("{} {} {:?}", i + 1, objects[i].name, fields.len()));
+            let note = format!("{} {} {:?}", i + 1, objects[i].name, fields.len());
+            send_with_clear(&note, &sender, &receiver);
             let row_result = self
                 .salesforce
                 .get_last_updated_records(&objects[i], 1)
                 .unwrap();
-            let _ = sender.send(format!("num rows to synch: {}", row_result.rows.len()));
+            let note = format!("num rows to synch: {}", row_result.rows.len());
+            send_with_clear(&note, &sender, &receiver);
             let result = self
                 .db
                 .upsert_object_rows(&row_result)
@@ -49,16 +51,20 @@ impl ExecuterInner for ExecuterInnerSF {
             let mut next_wrapper_opt = self.salesforce.get_next_records(&objects[i], &row_result);
             while let Some(next_wrapper) = next_wrapper_opt {
                 row_count += self.db.populate(&next_wrapper).unwrap();
-                let _ = sender.send(format!("Synched {} rows", row_count));
+                let note = format!("Synched {} rows", row_count);
+                send_with_clear(&note, &sender, &receiver);
                 if !next_wrapper.done {
-                    let _ = sender.send(format!("Next Path: {}", next_wrapper.next_url));
+                    let note = format!("Next Path: {}", next_wrapper.next_url);
+                    send_with_clear(&note, &sender, &receiver);
                 } else {
-                    let _ = sender.send(format!("Done: {} rows", row_count));
+                    let note = format!("Done: {} rows", row_count);
+                    send_with_clear(&note, &sender, &receiver);
                 }
                 next_wrapper_opt = self.salesforce.get_next_records(&objects[i], &next_wrapper);
             }
 
-            let _ = sender.send(format!("{}", result.unwrap()));
+            let note = format!("{}", result.unwrap());
+            send_with_clear(&note, &sender, &receiver);
             self.db.update_last_sync_time(objects[i].id);
         }
     }

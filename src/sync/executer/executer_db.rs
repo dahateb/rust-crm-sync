@@ -1,11 +1,11 @@
 use config::SyncConfig;
+use crossbeam_channel::{Receiver, Sender};
 use db::Db;
 use salesforce::Salesforce;
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
-use sync::executer::ExecuterInner;
+use sync::executer::{send_with_clear, ExecuterInner};
 
 pub struct ExecuterInnerDB {
     db: Arc<Db>,
@@ -30,13 +30,12 @@ impl ExecuterInnerDB {
 }
 
 impl ExecuterInner for ExecuterInnerDB {
-    fn execute(&self, sender: Sender<String>) {
-        //let _ = sender.send("Executer DB".to_owned());
+    fn execute(&self, sender: Sender<String>, receiver: Receiver<String>) {
         let mut records_map: HashMap<String, Vec<i32>> = HashMap::new();
         for note in self.db.get_notifications().iter() {
             let object: Vec<&str> = note.split("::").collect();
             //println!("{}",note);
-            let _ = sender.send(note.clone());
+            send_with_clear(note, &sender, &receiver);
             let name = object[0].to_owned();
             let _name = name.clone();
             let id = object[1].parse::<i32>().unwrap();

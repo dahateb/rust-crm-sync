@@ -1,10 +1,10 @@
-use std::sync::mpsc::Receiver;
+use crossbeam_channel::Receiver;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 use std::time::Duration;
 
 pub struct Logger {
-    receiver: Option<Arc<Mutex<Receiver<String>>>>,
+    receiver: Option<Receiver<String>>,
     switch: Arc<Mutex<bool>>,
 }
 
@@ -16,7 +16,7 @@ impl Logger {
         }
     }
 
-    pub fn add_receiver(&mut self, receiver: Option<Arc<Mutex<Receiver<String>>>>) {
+    pub fn add_receiver(&mut self, receiver: Option<Receiver<String>>) {
         //let mut recv = self.receiver.borrow_mut();
         //if recv.is_none() {
         //    *recv = Some(receiver);
@@ -36,7 +36,7 @@ impl Logger {
             if !check {
                 break;
             }
-            let recv = receiver.as_ref().unwrap().lock().unwrap();
+            let recv = receiver.as_ref().unwrap();
             while let Ok(message) = recv.try_recv() {
                 println!("{}", message);
             }

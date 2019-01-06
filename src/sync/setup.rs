@@ -94,7 +94,7 @@ impl Setup {
         }
         println!("{}", name);
         match self.db.get_object_config(&name) {
-            Some(config) => return true,
+            Some(_config) => return true,
             None => return false,
         }
     }

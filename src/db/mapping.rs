@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use salesforce::objects::Field;
+use std::collections::HashMap;
 
 static DEFAULT: &str = "varchar";
 
