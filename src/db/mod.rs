@@ -28,6 +28,7 @@ impl Db {
         let pool = Pool::new(config, manager)
             .map_err(|err| panic!("DB Error: Cannot connect - {}", err.to_string()))
             .unwrap();
+        println!("Connected to db: {}", db_config.url);
         Db {
             pool: pool,
             config: db_config,

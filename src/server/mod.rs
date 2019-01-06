@@ -12,6 +12,8 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::prelude::*;
 use tokio::timer::Interval;
+use db::Db;
+use salesforce::Salesforce;
 
 pub struct ApiServer {
     config: &'static Config,
@@ -20,8 +22,10 @@ pub struct ApiServer {
 
 impl ApiServer {
     pub fn start(config: &'static Config) {
-        let executer = Executer2::new();
-        let router = Arc::new(Router::new(config, executer.toggle_switch()));
+        let sf_arc = Arc::new(Salesforce::new(&config.salesforce));
+        let db_arc = Arc::new(Db::new(&config.db));
+        let executer = Executer2::new(sf_arc.clone(), db_arc.clone(), &config.sync);
+        let router = Arc::new(Router::new(sf_arc, db_arc, executer.toggle_switch()));
         let addr = config.server.url.parse().unwrap();
         let server = ApiServer {
             config: config,

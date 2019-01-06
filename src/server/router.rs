@@ -19,11 +19,9 @@ pub struct Router {
 }
 
 impl Router {
-    pub fn new(config: &'static Config, sync_toggle_switch: Arc<Mutex<bool>>) -> Router {
+    pub fn new(sf_arc: Arc<Salesforce>, db_arc: Arc<Db>, sync_toggle_switch: Arc<Mutex<bool>>) -> Router {
         let (sender, receiver) = channel();
         let (tx, rx) = channel();
-        let db_arc = Arc::new(Db::new(&config.db));
-        let sf_arc = Arc::new(Salesforce::new(&config.salesforce));
         Router {
             sync_toggle_switch,
             setup: Setup::new(db_arc, sf_arc),

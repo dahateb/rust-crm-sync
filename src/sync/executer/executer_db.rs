@@ -4,6 +4,7 @@ use salesforce::Salesforce;
 use std::collections::HashMap;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
+use std::fmt;
 use sync::executer::ExecuterInner;
 
 pub struct ExecuterInnerDB {
@@ -82,5 +83,11 @@ impl ExecuterInner for ExecuterInnerDB {
 
     fn get_timeout(&self) -> u64 {
         self.config.timeout
+    }
+}
+
+impl fmt::Display for ExecuterInnerDB {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "db_executer")
     }
 }

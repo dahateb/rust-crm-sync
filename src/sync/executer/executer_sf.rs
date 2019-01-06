@@ -4,6 +4,7 @@ use db::Db;
 use salesforce::Salesforce;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
+use std::fmt;
 use sync::executer::ExecuterInner;
 
 pub struct ExecuterInnerSF {
@@ -76,5 +77,11 @@ impl ExecuterInner for ExecuterInnerSF {
 
     fn get_timeout(&self) -> u64 {
         self.config.timeout
+    }
+}
+
+impl fmt::Display for ExecuterInnerSF {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "sf_executer")
     }
 }
