@@ -1,4 +1,5 @@
 extern crate chrono;
+extern crate crossbeam_channel;
 extern crate fallible_iterator;
 extern crate futures;
 extern crate hyper;
@@ -11,7 +12,6 @@ extern crate serde;
 extern crate time;
 extern crate tokio;
 extern crate url;
-extern crate crossbeam_channel;
 
 #[macro_use]
 extern crate lazy_static;

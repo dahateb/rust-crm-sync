@@ -33,6 +33,7 @@ impl Salesforce {
         let req_builder =
             |uri: &String| format!("{}/services/data/{}/sobjects", uri, self.config.api_version);
         let posted_str = self.client.get_resource(req_builder).unwrap();
+       // println!("{}", posted_str);
         let list: SObjectList = serde_json::from_str(posted_str.as_str()).unwrap();
         let filtered_list: Vec<SObject> = list
             .sobjects

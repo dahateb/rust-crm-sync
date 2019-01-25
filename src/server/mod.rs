@@ -13,7 +13,7 @@ use server::executer::Executer2;
 use server::router::Router;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use sync::executer::{MESSAGE_CHANNEL_SIZE, send_with_clear};
+use sync::executer::{send_with_clear, MESSAGE_CHANNEL_SIZE};
 use tokio::prelude::*;
 use tokio::timer::Interval;
 

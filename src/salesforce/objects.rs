@@ -9,7 +9,7 @@ pub struct SObjectList {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SObject {
-    label: String,
+    pub label: String,
     pub createable: bool,
     pub updateable: bool,
     pub queryable: bool,

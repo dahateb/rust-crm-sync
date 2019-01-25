@@ -22,7 +22,7 @@ impl Executer2 {
     }
 
     pub fn execute(&self, sender: Sender<String>, receiver: Receiver<String>) {
-      //  println!("executer {}", *self.toggle_switch.lock().unwrap());
+        //  println!("executer {}", *self.toggle_switch.lock().unwrap());
         for val in self.inners.iter() {
             let local_self = val.clone();
             let tx = sender.clone();

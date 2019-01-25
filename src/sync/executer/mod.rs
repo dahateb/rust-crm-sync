@@ -76,10 +76,10 @@ pub trait ExecuterInner: fmt::Display {
 
 pub fn send_with_clear(msg: &String, sender: &Sender<String>, receiver: &Receiver<String>) {
     match sender.try_send(msg.clone()) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(err) => {
             if err.is_full() {
-                for _ in receiver.iter().take(MESSAGE_CHANNEL_SIZE/2) {}
+                for _ in receiver.iter().take(MESSAGE_CHANNEL_SIZE / 2) {}
             }
         }
     }

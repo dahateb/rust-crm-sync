@@ -1,7 +1,7 @@
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use db::Db;
 use futures::future;
-use hyper::{Body, Method, Request, Response, StatusCode};
+use hyper::{Body, Method, Request, StatusCode};
 use salesforce::Salesforce;
 use server::response;
 use std::sync::{Arc, Mutex};
@@ -39,17 +39,25 @@ impl Router {
     }
 
     pub fn handle(&self, req: Request<Body>) -> response::BoxFut {
-        let mut response = Response::new(Body::empty());
+        let mut response = response::default_response().body(Body::empty()).unwrap();
         match (req.method(), req.uri().path()) {
             (&Method::GET, "/") | (&Method::GET, "/index.html") => {
                 *response.body_mut() = Body::from(response::INDEX);
             }
+            (&Method::GET, "/info") => {
+                let res = json!({
+                    "sync_running": *self.sync_toggle_switch.lock().unwrap()
+                });
+                *response.body_mut() = Body::from(res.to_string());
+            },
             (&Method::GET, "/setup/list") => {
-                let print_func = |obj: (u32, &String, bool)| {
+                let print_func = |obj: (u32, &String, &String, bool, bool)| {
                     let row = json!({
                         "num":  obj.0,
                         "name":  obj.1,
-                        "creatable":  obj.2
+                        "label": obj.2,
+                        "custom_setting": obj.3,
+                        "createable":  obj.4
                     });
                     row.to_string()
                 };

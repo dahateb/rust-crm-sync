@@ -32,7 +32,7 @@ impl Setup {
 
     pub fn list_salesforce_objects<F>(&self, print_func: F) -> Result<Vec<String>, String>
     where
-        F: FnMut((u32, &String, bool)) -> String,
+        F: FnMut((u32, &String, &String, bool, bool)) -> String,
     {
         let sf_objects = self.salesforce.get_objects()?;
         self.cache.lock().unwrap().sf_objects = Some(sf_objects);
@@ -47,7 +47,7 @@ impl Setup {
             .iter()
             .map(|obj| {
                 i += 1;
-                (i, &obj.name, obj.createable)
+                (i, &obj.name, &obj.label, obj.custom_setting, obj.createable)
             })
             .map(print_func)
             .collect::<Vec<_>>();

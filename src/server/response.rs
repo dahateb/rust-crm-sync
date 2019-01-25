@@ -1,7 +1,7 @@
 use futures::{future, Future, Stream};
+use hyper::http::response::Builder;
 use hyper::{Body, Response, StatusCode};
 use std::collections::HashMap;
-//use std::sync::mpsc::Sender;
 use crossbeam_channel::Sender;
 use sync::setup::Setup;
 use url::form_urlencoded;
@@ -15,10 +15,16 @@ pub static NOTNUMERIC: &[u8] = b"Number field is not numeric";
 pub static OBJECT_EXIST: &[u8] = b"Object exists already";
 pub static OBJECT_NOT_EXIST: &[u8] = b"Object doesn't exist";
 
+pub fn default_response() -> Builder {
+    let mut builder = Response::builder();
+    builder.header("Access-Control-Allow-Origin", "*");
+    builder
+}
+
 pub fn build_json_response(res: String) -> BoxFut {
     let body = Body::from(format!("[{}]", res));
     Box::new(future::ok(
-        Response::builder()
+        default_response()
             .header("Content-Type", "application/json")
             .body(body)
             .unwrap(),
@@ -26,7 +32,7 @@ pub fn build_json_response(res: String) -> BoxFut {
 }
 
 pub fn response_unprocessable(body: &'static [u8]) -> Response<Body> {
-    Response::builder()
+    default_response()
         .status(StatusCode::UNPROCESSABLE_ENTITY)
         .body(body.into())
         .unwrap()
@@ -58,9 +64,6 @@ pub fn response_notify(
         }
         let _ = sender.send((route, number));
 
-        Response::builder()
-            .status(status)
-            .body("OK".into())
-            .unwrap()
+        default_response().status(status).body("OK".into()).unwrap()
     }))
 }
