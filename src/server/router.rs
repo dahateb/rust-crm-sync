@@ -1,3 +1,5 @@
+use chrono::prelude::Utc;
+use chrono::TimeZone;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use db::Db;
 use futures::future;
@@ -45,19 +47,26 @@ impl Router {
                 *response.body_mut() = Body::from(response::INDEX);
             }
             (&Method::GET, "/info") => {
+                let sf = self.setup.salesforce();
+                let client = sf.client();
+                let sf_conn_data = client.get_login_data();
                 let res = json!({
-                    "sync_running": *self.sync_toggle_switch.lock().unwrap()
+                    "sync_running": *self.sync_toggle_switch.lock().unwrap(),
+                    "access_token": sf_conn_data.access_token,
+                    "instance_url": sf_conn_data.instance_url,
+                    "created": Utc.timestamp_millis(sf_conn_data.issued_at).to_rfc2822()
                 });
                 *response.body_mut() = Body::from(res.to_string());
-            },
+            }
             (&Method::GET, "/setup/list") => {
-                let print_func = |obj: (u32, &String, &String, bool, bool)| {
+                let print_func = |obj: (u32, &String, &String, bool, bool, bool)| {
                     let row = json!({
                         "num":  obj.0,
                         "name":  obj.1,
                         "label": obj.2,
                         "custom_setting": obj.3,
-                        "createable":  obj.4
+                        "createable":  obj.4,
+                        "synched": obj.5
                     });
                     row.to_string()
                 };
@@ -70,11 +79,12 @@ impl Router {
                 return response::build_json_response(res);
             }
             (&Method::GET, "/setup/available") => {
-                let print_func = |obj: (u32, &String, u32)| {
+                let print_func = |obj: (u32, &String, u32, usize)| {
                     let row = json!({
                         "num":  obj.0,
                         "name":  obj.1,
-                        "count":  obj.2
+                        "count":  obj.2,
+                        "num_fields": obj.3
                     });
                     row.to_string()
                 };

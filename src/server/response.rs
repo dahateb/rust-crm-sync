@@ -1,8 +1,8 @@
+use crossbeam_channel::Sender;
 use futures::{future, Future, Stream};
 use hyper::http::response::Builder;
 use hyper::{Body, Response, StatusCode};
 use std::collections::HashMap;
-use crossbeam_channel::Sender;
 use sync::setup::Setup;
 use url::form_urlencoded;
 

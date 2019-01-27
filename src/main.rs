@@ -9,6 +9,7 @@ extern crate r2d2;
 extern crate r2d2_postgres;
 extern crate reqwest;
 extern crate serde;
+extern crate serde_aux;
 extern crate time;
 extern crate tokio;
 extern crate url;

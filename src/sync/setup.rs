@@ -32,7 +32,7 @@ impl Setup {
 
     pub fn list_salesforce_objects<F>(&self, print_func: F) -> Result<Vec<String>, String>
     where
-        F: FnMut((u32, &String, &String, bool, bool)) -> String,
+        F: FnMut((u32, &String, &String, bool, bool, bool)) -> String,
     {
         let sf_objects = self.salesforce.get_objects()?;
         self.cache.lock().unwrap().sf_objects = Some(sf_objects);
@@ -47,7 +47,18 @@ impl Setup {
             .iter()
             .map(|obj| {
                 i += 1;
-                (i, &obj.name, &obj.label, obj.custom_setting, obj.createable)
+                let synced = match self.db.get_object_config(&obj.name) {
+                    Some(_config) => true,
+                    None => false,
+                };
+                (
+                    i,
+                    &obj.name,
+                    &obj.label,
+                    obj.custom_setting,
+                    obj.createable,
+                    synced,
+                )
             })
             .map(print_func)
             .collect::<Vec<_>>();
@@ -56,7 +67,7 @@ impl Setup {
 
     pub fn list_db_objects<F>(&self, print_func: F) -> Result<Vec<String>, String>
     where
-        F: FnMut((u32, &String, u32)) -> String,
+        F: FnMut((u32, &String, u32, usize)) -> String,
     {
         let objects = self.db.get_selected_objects(-1)?;
         self.cache.lock().unwrap().db_objects = Some(objects);
@@ -71,7 +82,7 @@ impl Setup {
             .iter()
             .map(|obj| {
                 i += 1;
-                (i, &obj.name, obj.count)
+                (i, &obj.name, obj.count, obj.fields.len())
             })
             .map(print_func)
             .collect::<Vec<String>>();
@@ -154,5 +165,9 @@ impl Setup {
         let obj = &db_objects.get(index - 1).ok_or(ERR_OBJECT_NOT_FOUND)?;
         self.db.destroy(obj.id, &obj.name);
         Ok(obj.name.clone())
+    }
+
+    pub fn salesforce(&self) -> Arc<Salesforce> {
+        self.salesforce.clone()
     }
 }

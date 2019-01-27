@@ -1,17 +1,19 @@
 use config::SalesforceConfig;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::{Client as ReqClient, Method, Request, RequestBuilder, Response};
+use serde_aux::prelude::deserialize_number_from_string;
 use std::collections::HashMap;
 use std::io::Read;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct LoginData {
     pub access_token: String,
     pub instance_url: String,
-    id: String,
-    token_type: String,
-    issued_at: String,
-    signature: String,
+    pub id: String,
+    pub token_type: String,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
+    pub issued_at: i64,
+    pub signature: String,
 }
 
 pub struct Client {
@@ -27,8 +29,8 @@ impl Client {
         }
     }
 
-    pub fn get_login_data(self) -> LoginData {
-        self.login_data.unwrap()
+    pub fn get_login_data(&self) -> &LoginData {
+        self.login_data.as_ref().unwrap()
     }
 
     pub fn is_connected(&self) -> bool {
@@ -54,6 +56,7 @@ impl Client {
         let req = self.client.post(config.uri.as_str());
         let req = req.form(&params).build().unwrap();
         let mut response = self.call(req).unwrap();
+        //println!("{}", response.text().unwrap());
         let ld: LoginData = response.json().map_err(|err| println!("{}", err)).unwrap();
         self.login_data = Some(ld);
         self

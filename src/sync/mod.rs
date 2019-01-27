@@ -198,7 +198,7 @@ impl Sync {
 
     fn list(&self) {
         println!("List:");
-        let print_func = |obj: (u32, &String, &String, bool, bool)| {
+        let print_func = |obj: (u32, &String, &String, bool, bool, bool)| {
             println!("{}.\t{}\t\t\t\t{}", obj.0, obj.1, obj.4);
             String::new()
         };
@@ -211,7 +211,7 @@ impl Sync {
 
     fn show_selected_objects(&self) {
         println!("Selected Objects");
-        let print_func = |obj: (u32, &String, u32)| {
+        let print_func = |obj: (u32, &String, u32, usize)| {
             println!("{}.\t{}\t\t\t{}", obj.0, obj.1, obj.2);
             String::new()
         };
