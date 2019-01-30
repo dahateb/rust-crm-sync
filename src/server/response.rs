@@ -21,6 +21,12 @@ pub fn default_response() -> Builder {
     builder
 }
 
+pub fn cors_response() -> Response<Body> {
+    let mut builder = default_response();
+    builder.header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT");
+    builder.body(Body::empty()).unwrap()
+}
+
 pub fn build_json_response(res: String) -> BoxFut {
     let body = Body::from(format!("[{}]", res));
     Box::new(future::ok(

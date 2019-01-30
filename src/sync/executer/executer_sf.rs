@@ -40,7 +40,9 @@ impl ExecuterInner for ExecuterInnerSF {
             let row_result = self
                 .salesforce
                 .get_last_updated_records(&objects[i], 1)
-                .unwrap();
+                .unwrap_or_else(|err| {
+                    panic!("sf_executer: {}", err);
+                });
             let note = format!("num rows to synch: {}", row_result.rows.len());
             send_with_clear(&note, &sender, &receiver);
             let result = self

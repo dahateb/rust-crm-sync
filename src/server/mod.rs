@@ -35,21 +35,23 @@ impl ApiServer {
             executer.toggle_switch(),
         ));
         let addr = config.server.url.parse().unwrap();
+        let async_router = router.async();
         let server = ApiServer {
             config: config,
-            router: router.clone(),
+            router: router,
         };
         let server = Server::bind(&addr)
             .serve(server)
             .map_err(|e| eprintln!("server error: {}", e));
-
+        // setup worker    
         let worker = Interval::new(Instant::now(), Duration::from_millis(1000))
             .for_each(move |instant| {
-                router.handle_async(instant);
+                async_router.handle_async(instant);
                 Ok(())
             })
             .map_err(|e| eprintln!("worker errored; err={:?}", e));
         let skip_switch = executer.toggle_switch();
+        //sync worker
         let executer_worker =
             Interval::new(Instant::now(), Duration::from_millis(config.sync.timeout))
                 .for_each(move |instant| {

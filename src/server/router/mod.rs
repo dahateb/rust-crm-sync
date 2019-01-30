@@ -1,3 +1,5 @@
+pub mod async;
+
 use chrono::prelude::Utc;
 use chrono::TimeZone;
 use crossbeam_channel::{unbounded, Receiver, Sender};
@@ -6,6 +8,7 @@ use futures::future;
 use hyper::{Body, Method, Request, StatusCode};
 use salesforce::Salesforce;
 use server::response;
+use server::router::async::AsyncRouter;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use sync::setup::Setup;
@@ -40,9 +43,20 @@ impl Router {
         }
     }
 
+    pub fn async(&self) -> AsyncRouter {
+        AsyncRouter::new(
+            self.setup.clone(),
+            self.trigger_receiver.clone(),
+            self.message_sender.clone(),
+        )
+    }
+
     pub fn handle(&self, req: Request<Body>) -> response::BoxFut {
         let mut response = response::default_response().body(Body::empty()).unwrap();
         match (req.method(), req.uri().path()) {
+            (&Method::OPTIONS, _) => {
+                response = response::cors_response();
+            }
             (&Method::GET, "/") | (&Method::GET, "/index.html") => {
                 *response.body_mut() = Body::from(response::INDEX);
             }
@@ -147,32 +161,5 @@ impl Router {
             }
         }
         Box::new(future::ok(response))
-    }
-
-    pub fn handle_async(&self, _instant: std::time::Instant) {
-        let recv = self.trigger_receiver.clone();
-        while let Ok(message) = recv.try_recv() {
-            println!("{}:{}", message.0, message.1);
-            match message.0.as_ref() {
-                "/setup/new" => {
-                    let sender = self.message_sender.clone();
-                    let setup = self.setup.clone();
-                    //asynchronous to allow for multiple objects
-                    std::thread::spawn(move || {
-                        let notify = |notification: &str, count: u64| {
-                            let _ = sender.send((notification.to_owned(), count, Instant::now()));
-                        };
-                        let _res = setup.setup_sf_object(message.1, true, notify);
-                    });
-                }
-                "/setup/delete" => {
-                    let _res = self
-                        .setup
-                        .delete_db_object(message.1)
-                        .map_err(|err| println!("{}", err));
-                }
-                _ => println!(""),
-            }
-        }
     }
 }
