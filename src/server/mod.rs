@@ -43,7 +43,7 @@ impl ApiServer {
         let server = Server::bind(&addr)
             .serve(server)
             .map_err(|e| eprintln!("server error: {}", e));
-        // setup worker    
+        // setup worker
         let worker = Interval::new(Instant::now(), Duration::from_millis(1000))
             .for_each(move |instant| {
                 async_router.handle_async(instant);

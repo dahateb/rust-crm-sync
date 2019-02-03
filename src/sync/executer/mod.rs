@@ -11,12 +11,13 @@ use std::thread::{self, sleep};
 use std::time::Duration;
 use sync::executer::executer_db::ExecuterInnerDB;
 use sync::executer::executer_sf::ExecuterInnerSF;
+use util::{Message, SyncMessage};
 
 pub const MESSAGE_CHANNEL_SIZE: usize = 1000;
 
 pub struct Executer {
     inners: Vec<Arc<dyn ExecuterInner + Send + Sync>>,
-    pub receiver: Option<Receiver<String>>,
+    pub receiver: Option<Receiver<Box<Message>>>,
 }
 
 impl Executer {
@@ -30,7 +31,7 @@ impl Executer {
     }
 
     pub fn start_sync(&mut self) {
-        let (send, recv) = bounded::<String>(1000);
+        let (send, recv) = bounded::<Box<Message>>(1000);
         self.receiver = Some(recv.clone());
         for val in self.inners.iter() {
             {
@@ -45,10 +46,12 @@ impl Executer {
                     {
                         let data = local_self.is_running();
                         if !data {
-                            let _ = tx.send(format!("Stopped Thread after {} loops", i));
+                            let note = format!("Stopped Thread after {} loops", i);
+                            send_with_clear(&note, &tx, &rx);
                             return 0;
                         }
-                        let _ = tx.send(format!("tick: {}, type: {}", i, local_self));
+                        let note = format!("tick: {}, type: {}", i, local_self);
+                        send_with_clear(&note, &tx, &rx);
                     }
 
                     sleep(Duration::from_millis(local_self.get_timeout()));
@@ -67,15 +70,19 @@ impl Executer {
 }
 
 pub trait ExecuterInner: fmt::Display {
-    fn execute(&self, Sender<String>, Receiver<String>);
+    fn execute(&self, Sender<Box<Message>>, Receiver<Box<Message>>);
     fn get_timeout(&self) -> u64;
     fn start(&self);
     fn is_running(&self) -> bool;
     fn stop(&self);
 }
 
-pub fn send_with_clear(msg: &String, sender: &Sender<String>, receiver: &Receiver<String>) {
-    match sender.try_send(msg.clone()) {
+pub fn send_with_clear(
+    msg: &String,
+    sender: &Sender<Box<Message>>,
+    receiver: &Receiver<Box<Message>>,
+) {
+    match sender.try_send(Box::new(SyncMessage::new(msg.as_str()))) {
         Ok(_) => {}
         Err(err) => {
             if err.is_full() {

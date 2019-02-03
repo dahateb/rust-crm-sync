@@ -6,6 +6,7 @@ use salesforce::Salesforce;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use sync::executer::{send_with_clear, ExecuterInner};
+use util::Message;
 
 pub struct ExecuterInnerSF {
     db: Arc<Db>,
@@ -30,7 +31,7 @@ impl ExecuterInnerSF {
 }
 
 impl ExecuterInner for ExecuterInnerSF {
-    fn execute(&self, sender: Sender<String>, receiver: Receiver<String>) {
+    fn execute(&self, sender: Sender<Box<Message>>, receiver: Receiver<Box<Message>>) {
         //println!("executing.... ");
         let objects: Vec<ObjectConfig> = self.db.get_selected_objects(1).unwrap();
         for i in 0..objects.len() {

@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use sync::executer::{send_with_clear, ExecuterInner};
+use util::Message;
 
 pub struct ExecuterInnerDB {
     db: Arc<Db>,
@@ -30,7 +31,7 @@ impl ExecuterInnerDB {
 }
 
 impl ExecuterInner for ExecuterInnerDB {
-    fn execute(&self, sender: Sender<String>, receiver: Receiver<String>) {
+    fn execute(&self, sender: Sender<Box<Message>>, receiver: Receiver<Box<Message>>) {
         let mut records_map: HashMap<String, Vec<i32>> = HashMap::new();
         for note in self.db.get_notifications().iter() {
             let object: Vec<&str> = note.split("::").collect();

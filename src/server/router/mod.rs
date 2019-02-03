@@ -1,4 +1,5 @@
 pub mod async;
+pub mod websocket;
 
 use chrono::prelude::Utc;
 use chrono::TimeZone;
@@ -12,6 +13,7 @@ use server::router::async::AsyncRouter;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use sync::setup::Setup;
+use util::Message;
 
 pub struct Router {
     sync_toggle_switch: Arc<Mutex<bool>>,
@@ -20,14 +22,14 @@ pub struct Router {
     trigger_receiver: Receiver<(String, usize)>,
     message_sender: Sender<(String, u64, Instant)>,
     message_receiver: Receiver<(String, u64, Instant)>,
-    sync_receiver: Receiver<String>,
+    sync_receiver: Receiver<Box<Message>>,
 }
 
 impl Router {
     pub fn new(
         sf_arc: Arc<Salesforce>,
         db_arc: Arc<Db>,
-        sync_receiver: Receiver<String>,
+        sync_receiver: Receiver<Box<Message>>,
         sync_toggle_switch: Arc<Mutex<bool>>,
     ) -> Router {
         let (sender, receiver) = unbounded();
@@ -149,10 +151,15 @@ impl Router {
                 let mut result = Vec::new();
                 let recv = self.sync_receiver.clone();
                 while let Ok(message) = recv.try_recv() {
-                    let json = json!({ "message": message });
-                    result.push(json.to_string());
+                    result.push(message.to_string());
                 }
                 return response::build_json_response(result.join(","));
+            }
+            (&Method::GET, "/ws/sync/messages") => {
+                response = websocket::mux(req, self.sync_receiver.clone());
+            }
+            (&Method::GET, "/ws/messages") => {
+                //response = websocket::mux(req, self.message_receiver.clone());
             }
             _ => {
                 // Return 404 not found response.

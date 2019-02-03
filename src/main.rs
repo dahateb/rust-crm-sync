@@ -1,3 +1,4 @@
+extern crate base64;
 extern crate chrono;
 extern crate crossbeam_channel;
 extern crate fallible_iterator;
@@ -10,8 +11,10 @@ extern crate r2d2_postgres;
 extern crate reqwest;
 extern crate serde;
 extern crate serde_aux;
+extern crate sha1;
 extern crate time;
 extern crate tokio;
+extern crate tokio_tungstenite;
 extern crate url;
 
 #[macro_use]
@@ -28,6 +31,7 @@ mod db;
 mod salesforce;
 mod server;
 mod sync;
+mod util;
 use config::Config;
 use server::ApiServer as Server;
 use std::env;

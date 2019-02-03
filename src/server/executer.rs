@@ -5,6 +5,7 @@ use salesforce::Salesforce;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use sync::executer::{executer_db::ExecuterInnerDB, executer_sf::ExecuterInnerSF, ExecuterInner};
+use util::Message;
 
 pub struct Executer2 {
     toggle_switch: Arc<Mutex<bool>>,
@@ -21,7 +22,7 @@ impl Executer2 {
         }
     }
 
-    pub fn execute(&self, sender: Sender<String>, receiver: Receiver<String>) {
+    pub fn execute(&self, sender: Sender<Box<Message>>, receiver: Receiver<Box<Message>>) {
         //  println!("executer {}", *self.toggle_switch.lock().unwrap());
         for val in self.inners.iter() {
             let local_self = val.clone();

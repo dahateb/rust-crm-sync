@@ -2,9 +2,10 @@ use crossbeam_channel::Receiver;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 use std::time::Duration;
+use util::Message;
 
 pub struct Logger {
-    receiver: Option<Receiver<String>>,
+    receiver: Option<Receiver<Box<Message>>>,
     switch: Arc<Mutex<bool>>,
 }
 
@@ -16,7 +17,7 @@ impl Logger {
         }
     }
 
-    pub fn add_receiver(&mut self, receiver: Option<Receiver<String>>) {
+    pub fn add_receiver(&mut self, receiver: Option<Receiver<Box<Message>>>) {
         //let mut recv = self.receiver.borrow_mut();
         //if recv.is_none() {
         //    *recv = Some(receiver);
@@ -38,7 +39,7 @@ impl Logger {
             }
             let recv = receiver.as_ref().unwrap();
             while let Ok(message) = recv.try_recv() {
-                println!("{}", message);
+                println!("{}", message.to_string());
             }
             sleep(Duration::from_millis(1000));
         });
