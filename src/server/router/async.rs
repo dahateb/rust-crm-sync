@@ -34,11 +34,8 @@ impl AsyncRouter {
                     std::thread::spawn(move || {
                         let start_time = Instant::now();
                         let notify = |notification: &str, count: u64| {
-                            let message = TriggerMessage::new(
-                                notification,
-                                count,
-                                start_time.elapsed()
-                            );
+                            let message =
+                                TriggerMessage::new(notification, count, start_time.elapsed());
                             let _ = sender.send(Box::new(message));
                         };
                         let _res = setup.setup_sf_object(message.1, true, notify);

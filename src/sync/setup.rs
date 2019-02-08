@@ -133,8 +133,14 @@ impl Setup {
 
         notify(&format!("Selected Object: {}", name), 0);
         let describe = self.salesforce.describe_object(&name)?;
+        match self.db.create_object_table(&name, &describe.fields) {
+            Err(err) => {
+                notify(&format!("Error on Object: {} {}", name, err), 0);
+                return Err(err.to_string());
+            }
+            Ok(_) => {}
+        }
         self.db.save_config_data(&describe);
-        self.db.create_object_table(&name, &describe.fields);
         if setup_db_sync {
             self.db.add_channel_trigger(&name);
         }

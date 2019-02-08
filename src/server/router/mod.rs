@@ -11,9 +11,8 @@ use salesforce::Salesforce;
 use server::response;
 use server::router::async::AsyncRouter;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 use sync::setup::Setup;
-use util::{Message};
+use util::Message;
 
 pub struct Router {
     sync_toggle_switch: Arc<Mutex<bool>>,

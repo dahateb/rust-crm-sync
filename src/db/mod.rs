@@ -42,7 +42,11 @@ impl Db {
                  &[&item.name, &item.name.to_lowercase(), &field_json]).unwrap();
     }
 
-    pub fn create_object_table(&self, object_name: &String, fields: &Vec<Field>) {
+    pub fn create_object_table(
+        &self,
+        object_name: &String,
+        fields: &Vec<Field>,
+    ) -> Result<u64, postgres::Error> {
         let table_name = format!("salesforce.{}", object_name);
         let mut query_builder = CreateQueryBuilder::new(&table_name);
         query_builder.add_field("id", "SERIAL PRIMARY KEY".to_string());
@@ -62,7 +66,7 @@ impl Db {
 
         // println!("{}", query);
         let conn = self.pool.get().unwrap();
-        conn.execute(query.as_str(), &[]).unwrap();
+        conn.execute(query.as_str(), &[])
     }
 
     pub fn add_channel_trigger(&self, object_name: &String) {

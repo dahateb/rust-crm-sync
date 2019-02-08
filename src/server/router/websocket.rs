@@ -1,6 +1,6 @@
 use crossbeam_channel::Receiver;
-use futures::future;
 use futures::prelude::*;
+//use futures::{future, stream};
 use hyper::header::*;
 use hyper::{Body, Request, Response, StatusCode, Version};
 use tokio_tungstenite::tungstenite::protocol::Message;
@@ -77,17 +77,18 @@ pub fn mux(req: Request<Body>, receiver: Receiver<Box<SyncMessage>>) -> Response
             x
         });
     tokio::spawn(on_upgrade.and_then(move |ws| {
-        let (mut sink, _stream) = ws.split();
+        let (sink, stream) = ws.split();
 
-        while let Ok(message) = receiver.recv() {
-            let res = sink.send(Message::text(message.to_string())).wait();
-            if res.is_err() {
-                println!("Connection Error: {}", res.err().unwrap());
-                break;
+        let responses = stream.map(move |_from_message| {
+            let mut msg = Vec::new();
+            while let Ok(to_message) = receiver.try_recv() {
+                msg.push(to_message.to_string());
             }
-            sink = res.unwrap();
-        }
-        future::ok(())
+            Message::text(format!("[{}]", msg.join(",")))
+        });
+        sink.send_all(responses).map(|_| ()).map_err(|e| {
+            eprintln!("failed websocket echo: {}", e);
+        })
     }));
 
     Response::builder()
