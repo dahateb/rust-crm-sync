@@ -13,15 +13,15 @@ use server::router::async::AsyncRouter;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use sync::setup::Setup;
-use util::Message;
+use util::{Message};
 
 pub struct Router {
     sync_toggle_switch: Arc<Mutex<bool>>,
     setup: Setup,
     trigger_sender: Sender<(String, usize)>,
     trigger_receiver: Receiver<(String, usize)>,
-    message_sender: Sender<(String, u64, Instant)>,
-    message_receiver: Receiver<(String, u64, Instant)>,
+    message_sender: Sender<Box<Message>>,
+    message_receiver: Receiver<Box<Message>>,
     sync_receiver: Receiver<Box<Message>>,
 }
 
@@ -129,13 +129,7 @@ impl Router {
                 let mut result = Vec::new();
                 let recv = self.message_receiver.clone();
                 while let Ok(message) = recv.try_recv() {
-                    let timestamp = format!("{:?}", message.2);
-                    let json = json!({
-                        "message": message.0,
-                        "count": message.1,
-                        "timestamp": timestamp
-                    });
-                    result.push(json.to_string());
+                    result.push(message.to_string());
                 }
                 return response::build_json_response(result.join(","));
             }
@@ -159,7 +153,7 @@ impl Router {
                 response = websocket::mux(req, self.sync_receiver.clone());
             }
             (&Method::GET, "/ws/messages") => {
-                //response = websocket::mux(req, self.message_receiver.clone());
+                response = websocket::mux(req, self.message_receiver.clone());
             }
             _ => {
                 // Return 404 not found response.

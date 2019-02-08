@@ -1,18 +1,19 @@
 use crossbeam_channel::{Receiver, Sender};
 use std::time::Instant;
 use sync::setup::Setup;
+use util::{Message, TriggerMessage};
 
 pub struct AsyncRouter {
     setup: Setup,
     trigger_receiver: Receiver<(String, usize)>,
-    message_sender: Sender<(String, u64, Instant)>,
+    message_sender: Sender<Box<Message>>,
 }
 
 impl AsyncRouter {
     pub fn new(
         setup: Setup,
         trigger_receiver: Receiver<(String, usize)>,
-        message_sender: Sender<(String, u64, Instant)>,
+        message_sender: Sender<Box<Message>>,
     ) -> AsyncRouter {
         AsyncRouter {
             setup: setup,
@@ -31,8 +32,14 @@ impl AsyncRouter {
                     let setup = self.setup.clone();
                     //asynchronous to allow for multiple objects
                     std::thread::spawn(move || {
+                        let start_time = Instant::now();
                         let notify = |notification: &str, count: u64| {
-                            let _ = sender.send((notification.to_owned(), count, Instant::now()));
+                            let message = TriggerMessage::new(
+                                notification,
+                                count,
+                                start_time.elapsed()
+                            );
+                            let _ = sender.send(Box::new(message));
                         };
                         let _res = setup.setup_sf_object(message.1, true, notify);
                     });
