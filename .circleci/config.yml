@@ -8,7 +8,7 @@ jobs:
       # and replace here. I put my own image here for
       # the example.
       - image: circleci/rust:latest-node-browsers-legacy
-
+    working_directory: /home/circleci/project
     environment:
       # Set your codecov token if your repository is private.
       CODECOV_TOKEN: <your-token>
@@ -30,3 +30,35 @@ jobs:
           paths:
             - "~/.cargo"
             - "./target"
+      - persist_to_workspace:
+          root: /home/circleci/project
+          paths:
+            - target
+            - deploy
+            - Dockerfile
+
+  deploy:
+    docker:
+      - image: circleci/python:2.7-jessie
+    working_directory: /home/circleci/project
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - attach_workspace:
+          at: /home/circleci/project
+      - run: |
+          sudo apt install gettext-base
+          sudo pip install --upgrade pip
+          sudo pip install awscli
+      - run: deploy/deploy.sh rust-crm-sync
+workflows:
+  version: 2
+  build-deploy:
+    jobs:
+      - build
+      - deploy:
+          requires:
+            - build
+          filters:
+            branches:
+              only: develop

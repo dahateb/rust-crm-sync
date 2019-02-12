@@ -1,8 +1,7 @@
-FROM rust:1.32
+FROM debian:9.7-slim
 
 WORKDIR /usr/src/app
-COPY . .
+COPY ./target .
 
-RUN cargo install --path .
 
 CMD ["/usr/src/app/target/release/rust-crm-sync"]
