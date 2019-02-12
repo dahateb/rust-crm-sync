@@ -21,7 +21,6 @@ jobs:
       - run:
           name: Check formatting
           command: |
-            rustfmt --version
             cargo fmt -- --write-mode=diff
       - run:
           name: Stable Build
