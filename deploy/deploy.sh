@@ -23,6 +23,7 @@ then
 fi
 
 build_docker(){
+  envsubst < deploy/config.$ENV.json > config.json
   sed -i.bk -e 's@{AWS_ACCOUNT_ID}@'"$AWS_ACCOUNT_ID"'@g' Dockerfile
   docker build -t $AWS_ACCOUNT_ID.dkr.ecr.eu-west-1.amazonaws.com/$APP:latest .
 }

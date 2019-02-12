@@ -50,7 +50,7 @@ jobs:
           sudo apt install gettext-base
           sudo pip install --upgrade pip
           sudo pip install awscli
-      - run: deploy/deploy.sh rust-crm-sync
+      - run: deploy/deploy.sh staging rust-crm-sync
 workflows:
   version: 2
   build-deploy:
