@@ -19,10 +19,6 @@ jobs:
       - restore_cache:
           key: project-cache
       - run:
-          name: Check formatting
-          command: |
-            cargo fmt -- --write-mode=diff
-      - run:
           name: Stable Build
           command: |
             cargo install --path .
