@@ -6,4 +6,4 @@ COPY ./target .
 RUN mkdir -p release/config
 COPY config.json ./release/config
 
-CMD ["cd /usr/src/app/release && .rust-crm-sync"]
+CMD ["cd /usr/src/app/release && ./rust-crm-sync"]
