@@ -1,8 +1,8 @@
-FROM debian:9.7-slim
+FROM debian:9.7
 
 WORKDIR /usr/src/app
 COPY ./target .
-RUN mkdir -p config
-COPY config.json ./config
+RUN mkdir -p release/config
+COPY config.json ./release/config
 
-CMD ["/usr/src/app/target/release/rust-crm-sync"]
+CMD ["/usr/src/app/release/rust-crm-sync"]
