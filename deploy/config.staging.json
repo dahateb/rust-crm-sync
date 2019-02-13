@@ -1,4 +1,20 @@
 {
-  "salesforce": {},
-  "db": {}
+  "salesforce": {
+    "uri": "$SALESFORCE_URL",
+    "client_id": "$SALESFORCE_CLIENT_ID",
+    "client_secret": "$SALESFORCE_CLIENT_SECRET",
+    "username": "$SALESFORCE_USERNAME",
+    "password": "$SALESFORCE_PASSWORD",
+    "sec_token": "$SALESFORCE_SECURITY_TOKEN",
+    "api_version": "$SALESFORCE_API_VERSION"
+  },
+  "db": {
+   "url": "$DB_URL"
+  },
+  "sync": {
+   "timeout": 1000
+  },
+  "server": {
+   "url": "$SERVER_URL"
+  }
 }

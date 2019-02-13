@@ -38,7 +38,7 @@ use std::env;
 use sync::Sync;
 
 lazy_static! {
-    static ref CONF: Config = Config::new("config.1.json").unwrap();
+    static ref CONF: Config = Config::new("config.json").unwrap();
 }
 
 fn main() {
