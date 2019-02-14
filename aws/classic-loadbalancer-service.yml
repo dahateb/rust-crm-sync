@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: 2010-09-09
+Metadata:
+  'AWS::CloudFormation::Designer':
+    809f1581-7195-4612-8f3f-ea2b25f0f353:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 680
+        'y': 170
+      z: 0
+      embeds: []
+    d883ce96-b742-4aa1-8463-e13d0e25efe2:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 590
+        'y': 170
+      z: 0
+      embeds: []
+      dependson:
+        - f1d66ea6-6df0-4b1f-ab62-dc4ed462fea1
+    f1d66ea6-6df0-4b1f-ab62-dc4ed462fea1:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 500
+        'y': 170
+      z: 0
+      embeds: []
+    cdbef772-779d-4b04-890a-12c9a238c13a:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 400
+        'y': 320
+      z: 0
+      embeds: []
+    7de60c57-e03a-40fb-8f45-30fbc70d3907:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 638.7876618546031
+        'y': 309.62054316302437
+      z: 0
+Parameters:
+  LoadbalancerName:
+    Type: String
+    Default: Test-Balancer-1
+    Description: Name of the Load Balancer created
+  InstanceType:
+    Type: String
+    Default: t2.small
+    Description: Name of the Load Balancer created
+  SecGroupName:
+    Type: String
+    Default: test-sec-group
+    Description: Default Security Group
+Resources:
+  ELBLBT4QO:
+    Type: 'AWS::ElasticLoadBalancing::LoadBalancer'
+    Properties:
+      LoadBalancerName: !Ref LoadbalancerName
+      SecurityGroups:
+      - Ref: 'SecGroupName'
+      AvailabilityZones:
+        'Fn::GetAZs':
+          Ref: 'AWS::Region'
+      HealthCheck:
+        HealthyThreshold: 10
+        Interval: 30
+        Timeout: 5
+        UnhealthyThreshold: 2
+        Target: 'HTTP:80/health'
+      Listeners:
+        - InstancePort: 80
+          InstanceProtocol: HTTP
+          LoadBalancerPort: 80
+          Protocol: HTTP
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 809f1581-7195-4612-8f3f-ea2b25f0f353
+  ASASG2C7FB:
+    Type: 'AWS::AutoScaling::AutoScalingGroup'
+    DependsOn: ASLC1ZLKC
+    Properties:
+      AutoScalingGroupName: Test-Autoscale
+      LaunchConfigurationName:
+        Ref: ASLC1ZLKC
+      AvailabilityZones:
+        'Fn::GetAZs':
+          Ref: 'AWS::Region'
+      MinSize: 1
+      MaxSize: 10
+      DesiredCapacity: 1
+      LoadBalancerNames:
+      - !Ref LoadbalancerName
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: d883ce96-b742-4aa1-8463-e13d0e25efe2
+  ASLC1ZLKC:
+    Type: 'AWS::AutoScaling::LaunchConfiguration'
+    Properties:
+      ImageId: ami-0ff8a91507f77f867
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Sub 'arn:aws:iam::${AWS::AccountId}:role/ecsInstanceRole'
+      SecurityGroups:
+      - Ref: 'SecGroupName'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: f1d66ea6-6df0-4b1f-ab62-dc4ed462fea1
+  ECSCUPIS:
+    Type: 'AWS::ECS::Cluster'
+    Properties:
+      ClusterName: Test-Cluster
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: cdbef772-779d-4b04-890a-12c9a238c13a
+  EC2SGSE1R:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+       GroupName: !Ref 'SecGroupName'
+       GroupDescription: 'security group for classic load balance test'
+       VpcId: 'vpc-20fac745'
+       SecurityGroupIngress:
+       - IpProtocol: tcp
+         FromPort: 80
+         ToPort: 80
+         CidrIp: 0.0.0.0/0
+       SecurityGroupEgress:
+       - IpProtocol: tcp
+         FromPort: 0
+         ToPort: 65535
+         CidrIp: 0.0.0.0/0
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 7de60c57-e03a-40fb-8f45-30fbc70d3907
