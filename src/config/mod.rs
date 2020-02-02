@@ -1,6 +1,7 @@
 use serde_json;
 use std::fs::File;
 use std::io::prelude::*;
+use std::path::PathBuf;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SalesforceConfig {
@@ -38,7 +39,10 @@ pub struct Config {
 
 impl Config {
     pub fn new(file: &str) -> Result<Self, String> {
-        let mut file = File::open(file)
+	let mut path_buf = PathBuf::new();
+	path_buf.push("config");
+	path_buf.push(file);
+        let mut file = File::open(path_buf.as_path())
             .map_err(|err| format!("Problem while loading config: {}", err))
             .unwrap();
         let mut input = String::new();
