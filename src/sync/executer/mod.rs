@@ -17,7 +17,7 @@ pub const MESSAGE_CHANNEL_SIZE: usize = 1000;
 
 pub struct Executer {
     inners: Vec<Arc<dyn ExecuterInner + Send + Sync>>,
-    pub receiver: Option<Receiver<Box<Message>>>,
+    pub receiver: Option<Receiver<Box<dyn Message>>>,
 }
 
 impl Executer {
@@ -31,7 +31,7 @@ impl Executer {
     }
 
     pub fn start_sync(&mut self) {
-        let (send, recv) = bounded::<Box<Message>>(1000);
+        let (send, recv) = bounded::<Box<dyn Message>>(1000);
         self.receiver = Some(recv.clone());
         for val in self.inners.iter() {
             {
@@ -47,11 +47,11 @@ impl Executer {
                         let data = local_self.is_running();
                         if !data {
                             let note = format!("Stopped Thread after {} loops", i);
-                            send_with_clear(&note, &tx, &rx);
+                            send_with_clear(SyncMessage::new(note.as_str(), "", 0), &tx, &rx);
                             return 0;
                         }
                         let note = format!("tick: {}, type: {}", i, local_self);
-                        send_with_clear(&note, &tx, &rx);
+                        send_with_clear(SyncMessage::new(note.as_str(), "", 0), &tx, &rx);
                     }
 
                     sleep(Duration::from_millis(local_self.get_timeout()));
@@ -70,7 +70,7 @@ impl Executer {
 }
 
 pub trait ExecuterInner: fmt::Display {
-    fn execute(&self, Sender<Box<Message>>, Receiver<Box<Message>>);
+    fn execute(&self, Sender<Box<dyn Message>>, Receiver<Box<dyn Message>>);
     fn get_timeout(&self) -> u64;
     fn start(&self);
     fn is_running(&self) -> bool;
@@ -78,11 +78,11 @@ pub trait ExecuterInner: fmt::Display {
 }
 
 pub fn send_with_clear(
-    msg: &String,
-    sender: &Sender<Box<Message>>,
-    receiver: &Receiver<Box<Message>>,
+    msg: SyncMessage,
+    sender: &Sender<Box<dyn Message>>,
+    receiver: &Receiver<Box<dyn Message>>,
 ) {
-    match sender.try_send(Box::new(SyncMessage::new(msg.as_str()))) {
+    match sender.try_send(Box::new(msg)) {
         Ok(_) => {}
         Err(err) => {
             if err.is_full() {

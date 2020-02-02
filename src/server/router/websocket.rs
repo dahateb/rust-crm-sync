@@ -8,7 +8,7 @@ use tokio_tungstenite::tungstenite::protocol::Role;
 use tokio_tungstenite::WebSocketStream;
 use util::Message as SyncMessage;
 
-pub fn mux(req: Request<Body>, receiver: Receiver<Box<SyncMessage>>) -> Response<Body> {
+pub fn mux(req: Request<Body>, receiver: Receiver<Box<dyn SyncMessage>>) -> Response<Body> {
     // All of this stuff should be done by a helper in the websocket library.
     fn convert_key(input: &[u8]) -> String {
         const WS_GUID: &[u8] = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11";

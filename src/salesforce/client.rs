@@ -73,7 +73,7 @@ impl Client {
         F: Fn(&String) -> String,
     {
         let req = self.build_auth_request(Method::GET, req_builder);
-        let mut response = try!(self.call(req.build().unwrap()));
+        let mut response = (self.call(req.build().unwrap()))?;
         let mut result = String::new();
         let _bytes_read = response.read_to_string(&mut result);
         Ok(result)
@@ -87,7 +87,7 @@ impl Client {
         let mut req = builder.body(data).build().unwrap();
         req.headers_mut()
             .insert(CONTENT_TYPE, "application/json".parse().unwrap());
-        let mut response = try!(self.call(req));
+        let mut response = self.call(req)?;
         let mut result = String::new();
         let _bytes_read = response.read_to_string(&mut result);
         Ok(result)
@@ -101,14 +101,14 @@ impl Client {
         let mut req = builder.body(data).build().unwrap();
         req.headers_mut()
             .insert(CONTENT_TYPE, "application/json".parse().unwrap());
-        let mut response = try!(self.call(req));
+        let mut response = self.call(req)?;
         let mut result = String::new();
         let _bytes_read = response.read_to_string(&mut result);
         Ok(result)
     }
 
     fn call(&self, req: Request) -> Result<Response, String> {
-        let mut response = try!(self.client.execute(req).map_err(|err| err.to_string()));
+        let mut response = self.client.execute(req).map_err(|err| err.to_string())?;
         if !response.status().is_success() {
             let mut result = String::new();
             let _ = response.read_to_string(&mut result);

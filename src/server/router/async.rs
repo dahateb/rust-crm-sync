@@ -6,14 +6,14 @@ use util::{Message, TriggerMessage};
 pub struct AsyncRouter {
     setup: Setup,
     trigger_receiver: Receiver<(String, usize)>,
-    message_sender: Sender<Box<Message>>,
+    message_sender: Sender<Box<dyn Message>>,
 }
 
 impl AsyncRouter {
     pub fn new(
         setup: Setup,
         trigger_receiver: Receiver<(String, usize)>,
-        message_sender: Sender<Box<Message>>,
+        message_sender: Sender<Box<dyn Message>>,
     ) -> AsyncRouter {
         AsyncRouter {
             setup: setup,

@@ -22,7 +22,7 @@ impl Executer2 {
         }
     }
 
-    pub fn execute(&self, sender: Sender<Box<Message>>, receiver: Receiver<Box<Message>>) {
+    pub fn execute(&self, sender: Sender<Box<dyn Message>>, receiver: Receiver<Box<dyn Message>>) {
         //  println!("executer {}", *self.toggle_switch.lock().unwrap());
         for val in self.inners.iter() {
             let local_self = val.clone();

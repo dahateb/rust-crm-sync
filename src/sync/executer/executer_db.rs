@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex};
 use sync::executer::{send_with_clear, ExecuterInner};
-use util::Message;
+use util::{Message, SyncMessage};
 
 pub struct ExecuterInnerDB {
     db: Arc<Db>,
@@ -31,12 +31,16 @@ impl ExecuterInnerDB {
 }
 
 impl ExecuterInner for ExecuterInnerDB {
-    fn execute(&self, sender: Sender<Box<Message>>, receiver: Receiver<Box<Message>>) {
+    fn execute(&self, sender: Sender<Box<dyn Message>>, receiver: Receiver<Box<dyn Message>>) {
         let mut records_map: HashMap<String, Vec<i32>> = HashMap::new();
         for note in self.db.get_notifications().iter() {
             let object: Vec<&str> = note.split("::").collect();
             //println!("{}",note);
-            send_with_clear(note, &sender, &receiver);
+            send_with_clear(
+                SyncMessage::new("triggered new db sync", object[0], 0),
+                &sender,
+                &receiver,
+            );
             let name = object[0].to_owned();
             let _name = name.clone();
             let id = object[1].parse::<i32>().unwrap();
@@ -61,6 +65,11 @@ impl ExecuterInner for ExecuterInnerDB {
                     self.db.set_error_state(&key, err_id, &error);
                 }
                 println!("{:?}", ids.0);
+                send_with_clear(
+                    SyncMessage::new("updated from db", key.as_str(), records.len()),
+                    &sender,
+                    &receiver,
+                );
             } else {
                 let _ = result.map_err(|err| println!("{}", err));
             }

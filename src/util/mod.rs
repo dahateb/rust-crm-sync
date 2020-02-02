@@ -14,13 +14,17 @@ pub trait Message: std::marker::Send {
 pub struct SyncMessage {
     message_type: MessageType,
     message: String,
+    obj_type: String,
+    obj_count: usize,
 }
 
 impl SyncMessage {
-    pub fn new(message: &str) -> Self {
+    pub fn new(message: &str, obj_type: &str, obj_count: usize) -> Self {
         Self {
             message_type: MessageType::SyncMessageType,
             message: message.to_owned(),
+            obj_type: obj_type.to_owned(),
+            obj_count: obj_count,
         }
     }
 }
@@ -30,7 +34,12 @@ impl Message for SyncMessage {
         &self.message_type
     }
     fn to_string(&self) -> String {
-        json!({ "message": self.message }).to_string()
+        json!({
+            "message": self.message,
+            "obj_type": self.obj_type,
+            "obj_count": self.obj_count
+        })
+        .to_string()
     }
 }
 

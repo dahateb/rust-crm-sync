@@ -19,16 +19,16 @@ pub struct Router {
     setup: Setup,
     trigger_sender: Sender<(String, usize)>,
     trigger_receiver: Receiver<(String, usize)>,
-    message_sender: Sender<Box<Message>>,
-    message_receiver: Receiver<Box<Message>>,
-    sync_receiver: Receiver<Box<Message>>,
+    message_sender: Sender<Box<dyn Message>>,
+    message_receiver: Receiver<Box<dyn Message>>,
+    sync_receiver: Receiver<Box<dyn Message>>,
 }
 
 impl Router {
     pub fn new(
         sf_arc: Arc<Salesforce>,
         db_arc: Arc<Db>,
-        sync_receiver: Receiver<Box<Message>>,
+        sync_receiver: Receiver<Box<dyn Message>>,
         sync_toggle_switch: Arc<Mutex<bool>>,
     ) -> Router {
         let (sender, receiver) = unbounded();

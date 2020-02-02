@@ -5,7 +5,7 @@ use std::time::Duration;
 use util::Message;
 
 pub struct Logger {
-    receiver: Option<Receiver<Box<Message>>>,
+    receiver: Option<Receiver<Box<dyn Message>>>,
     switch: Arc<Mutex<bool>>,
 }
 
@@ -17,7 +17,7 @@ impl Logger {
         }
     }
 
-    pub fn add_receiver(&mut self, receiver: Option<Receiver<Box<Message>>>) {
+    pub fn add_receiver(&mut self, receiver: Option<Receiver<Box<dyn Message>>>) {
         //let mut recv = self.receiver.borrow_mut();
         //if recv.is_none() {
         //    *recv = Some(receiver);

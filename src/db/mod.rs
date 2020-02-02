@@ -177,13 +177,10 @@ impl Db {
     pub fn upsert_object_rows(&self, wrapper: &SObjectRowResultWrapper) -> Result<u64, String> {
         let mut count = 0;
         for id in wrapper.rows.keys() {
-            let mut result = try! {
-                self.update_rows(id, &wrapper.object_name, &wrapper.rows.get(id).unwrap())
-            };
+            let mut result =
+                { self.update_rows(id, &wrapper.object_name, &wrapper.rows.get(id).unwrap()) }?;
             if result == 0 {
-                result = try! {
-                    self.insert_rows(&wrapper.object_name, &wrapper.rows.get(id).unwrap())
-                }
+                result = { self.insert_rows(&wrapper.object_name, &wrapper.rows.get(id).unwrap()) }?
             }
             count += result;
         }
@@ -193,9 +190,9 @@ impl Db {
     pub fn populate(&self, wrapper: &SObjectRowResultWrapper) -> Result<u64, String> {
         let mut count = 0;
         for row in wrapper.rows.values() {
-            count += try!(self
+            count += (self
                 .insert_rows(&wrapper.object_name, &row)
-                .map_err(|err| err.to_string()));
+                .map_err(|err| err.to_string()))?;
         }
         Ok(count)
     }
@@ -262,13 +259,13 @@ impl Db {
     fn query_with_lock(&self, query: &String, object_name: &str) -> Result<u64, String> {
         //add channel lock flag here
         let conn = self.pool.get().unwrap();
-        let _ = try!(conn
+        let _ = (conn
             .execute(&get_lock_query(object_name, true), &[])
-            .map_err(|err| err.to_string()));
-        let result = try!(conn.execute(&query, &[]).map_err(|err| err.to_string()));
-        let _ = try!(conn
+            .map_err(|err| err.to_string()))?;
+        let result = (conn.execute(&query, &[]).map_err(|err| err.to_string()))?;
+        let _ = (conn
             .execute(&get_lock_query(object_name, false), &[])
-            .map_err(|err| err.to_string()));
+            .map_err(|err| err.to_string()))?;
         Ok(result)
     }
 

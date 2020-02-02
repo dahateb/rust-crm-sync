@@ -90,7 +90,7 @@ impl Salesforce {
 
     pub fn get_records_from_describe(
         &self,
-        describe: &SObjectConfiguration,
+        describe:  &dyn SObjectConfiguration,
         object_name: &str,
     ) -> Result<SObjectRowResultWrapper, String> {
         let all_fields: Vec<String> = describe
@@ -106,10 +106,10 @@ impl Salesforce {
                 uri, self.config.api_version, query
             )
         };
-        let posted_str = try!(self
+        let posted_str = self
             .client
             .get_resource(req_builder)
-            .map_err(|err| err.to_string()));
+            .map_err(|err| err.to_string())?;
         //println!("{}",posted_str);
         let v: Value = serde_json::from_str(posted_str.as_str()).unwrap();
         Ok(SObjectRowResultWrapper::new(
@@ -121,7 +121,7 @@ impl Salesforce {
 
     pub fn get_next_records(
         &self,
-        describe: &SObjectConfiguration,
+        describe: &dyn SObjectConfiguration,
         wrapper: &SObjectRowResultWrapper,
     ) -> Option<SObjectRowResultWrapper> {
         if wrapper.done {

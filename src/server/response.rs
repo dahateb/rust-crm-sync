@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use sync::setup::Setup;
 use url::form_urlencoded;
 
-pub type BoxFut = Box<Future<Item = Response<Body>, Error = hyper::Error> + Send>;
+pub type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;
 
 pub static NOTFOUND: &[u8] = b"Not Found";
 pub static INDEX: &[u8] = b"<h4>===> SYNC API <===</h4>";

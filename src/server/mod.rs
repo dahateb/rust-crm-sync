@@ -16,6 +16,7 @@ use std::time::{Duration, Instant};
 use sync::executer::{send_with_clear, MESSAGE_CHANNEL_SIZE};
 use tokio::prelude::*;
 use tokio::timer::Interval;
+use util::SyncMessage;
 
 pub struct ApiServer {
     config: &'static Config,
@@ -61,8 +62,8 @@ impl ApiServer {
                         }
                     }
                     executer.execute(tx.clone(), rx.clone());
-                    let note = format!("{:?}", instant);
-                    send_with_clear(&note, &tx, &rx);
+                    //  let note = format!("{:?}", instant);
+                    //  send_with_clear(SyncMessage::new(note.as_str(), ""), &tx, &rx);
                     Ok(())
                 })
                 .map_err(|e| eprintln!("executer errored; err={:?}", e));
@@ -82,7 +83,7 @@ impl NewService for ApiServer {
     type Error = Error;
     type InitError = Error;
     type Service = ApiServer;
-    type Future = Box<Future<Item = Self::Service, Error = Self::InitError> + Send>;
+    type Future = Box<dyn Future<Item = Self::Service, Error = Self::InitError> + Send>;
     fn new_service(&self) -> Self::Future {
         Box::new(future::ok(Self {
             config: self.config,
@@ -95,7 +96,7 @@ impl Service for ApiServer {
     type ReqBody = Body;
     type ResBody = Body;
     type Error = Error;
-    type Future = Box<Future<Item = Response<Body>, Error = Error> + Send>;
+    type Future = Box<dyn Future<Item = Response<Body>, Error = Error> + Send>;
     fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
         self.router.handle(req)
     }
