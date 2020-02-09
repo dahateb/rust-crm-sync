@@ -61,17 +61,13 @@ impl Record {
                     Some(val) => Some(Value::F32(val)),
                     None => None,
                 },
-                &BOOL => {
-                    match row.get::<_, Option<bool>>(idx) {
-                        Some(val) => Some(Value::Bool(row.get::<_, bool>(idx))),
-                        None => Some(Value::Bool(false)) 
-                    }
-                },   
-                &TIMESTAMP =>  {
-                    match row.get::<_, Option<NaiveDateTime>>(idx) {
-                        Some(d) => Some(Value::STR(d.to_string())),
-                        None => None
-                    }
+                &BOOL => match row.get::<_, Option<bool>>(idx) {
+                    Some(val) => Some(Value::Bool(row.get::<_, bool>(idx))),
+                    None => Some(Value::Bool(false)),
+                },
+                &TIMESTAMP => match row.get::<_, Option<NaiveDateTime>>(idx) {
+                    Some(d) => Some(Value::STR(d.to_string())),
+                    None => None,
                 },
                 &DATE => match row.get::<_, Option<NaiveDate>>(idx) {
                     Some(d) => Some(Value::STR(d.to_string())),

@@ -1,11 +1,12 @@
 pub mod executer;
 pub mod response;
 pub mod router;
+pub mod http_routes;
 
 use config::Config;
 use crossbeam_channel::bounded;
 use db::Db;
-use futures::{future, Future, lazy};
+use futures::{future, lazy, Future};
 use hyper::service::{NewService, Service};
 use hyper::{Body, Error, Request, Response, Server};
 use salesforce::Salesforce;
@@ -36,7 +37,7 @@ impl ApiServer {
             executer.toggle_switch(),
         ));
         let addr = config.server.url.parse().unwrap();
-        let async_router = router.async();
+        let async_router = router.worker();
         let server = ApiServer {
             config: config,
             router: router,
@@ -69,6 +70,9 @@ impl ApiServer {
                 .map_err(|e| eprintln!("executer errored; err={:?}", e));
         tokio_compat::run(lazy(move || {
             println!("Serving at {}", addr);
+//            tokio_02::spawn(async {                
+//                warp::serve(http_routes::build_routes()).run(([127, 0, 0, 1], 3030)).await;
+//            });
             tokio_01::spawn(lazy(|| server)); //<======
             tokio_01::spawn(lazy(|| worker));
             tokio_01::spawn(lazy(|| executer_worker));

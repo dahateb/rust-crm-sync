@@ -13,10 +13,11 @@ extern crate serde;
 extern crate serde_aux;
 extern crate sha1;
 extern crate time;
-extern crate tokio_compat;
 extern crate tokio_01;
+extern crate tokio_compat;
 extern crate tokio_tungstenite;
 extern crate url;
+extern crate warp;
 
 #[macro_use]
 extern crate lazy_static;

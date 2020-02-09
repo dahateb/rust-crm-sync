@@ -5,6 +5,7 @@ use self::objects::{
     SObject, SObjectConfiguration, SObjectDescribe, SObjectList, SObjectRowResultWrapper,
 };
 use chrono::prelude::*;
+use chrono::Duration;
 use config::SalesforceConfig;
 use db::objects::ObjectConfig;
 use db::record::Record;
@@ -13,7 +14,6 @@ use serde_json::{self, Value};
 use std::collections::HashMap;
 use std::ops::Sub;
 use std::str;
-use time::Duration;
 
 pub struct Salesforce {
     config: &'static SalesforceConfig,
@@ -90,7 +90,7 @@ impl Salesforce {
 
     pub fn get_records_from_describe(
         &self,
-        describe:  &dyn SObjectConfiguration,
+        describe: &dyn SObjectConfiguration,
         object_name: &str,
     ) -> Result<SObjectRowResultWrapper, String> {
         let all_fields: Vec<String> = describe

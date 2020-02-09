@@ -11,7 +11,7 @@ serde = "1.0.82"
 serde_derive = "1.0.82"
 serde-aux = "0.6.1"
 chrono = "0.4"
-time = "0.1"
+time = { version = "0.2", default-features = true }
 postgres = { version = "0.15.2", features = ["with-chrono"] }
 r2d2="0.7.3"
 r2d2_postgres="0.13"
@@ -26,3 +26,5 @@ sha1 = "0.6.0"
 base64 = "0.10.1"
 tokio-compat = { version = "0.1", features = ["rt-full"] }
 tokio-01 = { package = "tokio", version = "0.1" }
+tokio-02 = { package = "tokio", version = "0.2.4", features = ["full"] }
+warp = "0.2"

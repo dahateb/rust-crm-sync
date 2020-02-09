@@ -39,9 +39,9 @@ pub struct Config {
 
 impl Config {
     pub fn new(file: &str) -> Result<Self, String> {
-	let mut path_buf = PathBuf::new();
-	path_buf.push("config");
-	path_buf.push(file);
+        let mut path_buf = PathBuf::new();
+        path_buf.push("config");
+        path_buf.push(file);
         let mut file = File::open(path_buf.as_path())
             .map_err(|err| format!("Problem while loading config: {}", err))
             .unwrap();

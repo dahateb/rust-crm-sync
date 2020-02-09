@@ -1,4 +1,4 @@
-pub mod async;
+pub mod worker;
 pub mod websocket;
 
 use chrono::prelude::Utc;
@@ -9,7 +9,7 @@ use futures::future;
 use hyper::{Body, Method, Request, StatusCode};
 use salesforce::Salesforce;
 use server::response;
-use server::router::async::AsyncRouter;
+use server::router::worker::AsyncRouter;
 use std::sync::{Arc, Mutex};
 use sync::setup::Setup;
 use util::Message;
@@ -44,7 +44,7 @@ impl Router {
         }
     }
 
-    pub fn async(&self) -> AsyncRouter {
+    pub fn worker(&self) -> AsyncRouter {
         AsyncRouter::new(
             self.setup.clone(),
             self.trigger_receiver.clone(),
