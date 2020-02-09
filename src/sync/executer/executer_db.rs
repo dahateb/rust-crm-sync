@@ -1,12 +1,12 @@
-use config::SyncConfig;
+use crate::config::SyncConfig;
+use crate::db::Db;
+use crate::salesforce::Salesforce;
+use crate::sync::executer::{send_with_clear, ExecuterInner};
+use crate::util::{Message, SyncMessage};
 use crossbeam_channel::{Receiver, Sender};
-use db::Db;
-use salesforce::Salesforce;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex};
-use sync::executer::{send_with_clear, ExecuterInner};
-use util::{Message, SyncMessage};
 
 pub struct ExecuterInnerDB {
     db: Arc<Db>,

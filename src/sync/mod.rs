@@ -2,17 +2,17 @@ pub mod executer;
 pub mod logger;
 pub mod setup;
 
-use config::Config;
-use db::Db;
-use salesforce::Salesforce;
+use crate::config::Config;
+use crate::db::Db;
+use crate::salesforce::Salesforce;
+use crate::sync::executer::Executer;
+use crate::sync::logger::Logger;
+use crate::sync::setup::Setup;
 use std::cell::RefCell;
 use std::io::{self, Write};
 use std::str::FromStr;
 use std::string::String;
 use std::sync::Arc;
-use sync::executer::Executer;
-use sync::logger::Logger;
-use sync::setup::Setup;
 
 const STATE_START: u8 = 0;
 const STATE_SETUP: u8 = 49;

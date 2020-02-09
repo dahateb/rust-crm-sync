@@ -1,23 +1,22 @@
 pub mod executer;
+pub mod http_routes;
 pub mod response;
 pub mod router;
-pub mod http_routes;
 
-use config::Config;
+use crate::config::Config;
+use crate::db::Db;
+use crate::salesforce::Salesforce;
+use crate::server::executer::Executer2;
+use crate::server::router::Router;
+use crate::sync::executer::MESSAGE_CHANNEL_SIZE;
 use crossbeam_channel::bounded;
-use db::Db;
 use futures::{future, lazy, Future};
 use hyper::service::{NewService, Service};
 use hyper::{Body, Error, Request, Response, Server};
-use salesforce::Salesforce;
-use server::executer::Executer2;
-use server::router::Router;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use sync::executer::{send_with_clear, MESSAGE_CHANNEL_SIZE};
 use tokio_01::prelude::*;
 use tokio_01::timer::Interval;
-use util::SyncMessage;
 
 pub struct ApiServer {
     config: &'static Config,
@@ -56,7 +55,7 @@ impl ApiServer {
         //sync worker
         let executer_worker =
             Interval::new(Instant::now(), Duration::from_millis(config.sync.timeout))
-                .for_each(move |instant| {
+                .for_each(move |_instant| {
                     {
                         if !*skip_switch.lock().unwrap() {
                             return Ok(());
@@ -70,9 +69,11 @@ impl ApiServer {
                 .map_err(|e| eprintln!("executer errored; err={:?}", e));
         tokio_compat::run(lazy(move || {
             println!("Serving at {}", addr);
-//            tokio_02::spawn(async {                
-//                warp::serve(http_routes::build_routes()).run(([127, 0, 0, 1], 3030)).await;
-//            });
+            tokio_02::spawn(async {
+                warp::serve(http_routes::build_routes())
+                    .run(([127, 0, 0, 1], 3030))
+                    .await;
+            });
             tokio_01::spawn(lazy(|| server)); //<======
             tokio_01::spawn(lazy(|| worker));
             tokio_01::spawn(lazy(|| executer_worker));

@@ -1,17 +1,17 @@
 pub mod executer_db;
 pub mod executer_sf;
 
-use config::SyncConfig;
+use crate::config::SyncConfig;
+use crate::db::Db;
+use crate::salesforce::Salesforce;
+use crate::sync::executer::executer_db::ExecuterInnerDB;
+use crate::sync::executer::executer_sf::ExecuterInnerSF;
+use crate::util::{Message, SyncMessage};
 use crossbeam_channel::{bounded, Receiver, Sender};
-use db::Db;
-use salesforce::Salesforce;
 use std::fmt;
 use std::sync::Arc;
 use std::thread::{self, sleep};
 use std::time::Duration;
-use sync::executer::executer_db::ExecuterInnerDB;
-use sync::executer::executer_sf::ExecuterInnerSF;
-use util::{Message, SyncMessage};
 
 pub const MESSAGE_CHANNEL_SIZE: usize = 1000;
 
@@ -70,7 +70,7 @@ impl Executer {
 }
 
 pub trait ExecuterInner: fmt::Display {
-    fn execute(&self, Sender<Box<dyn Message>>, Receiver<Box<dyn Message>>);
+    fn execute(&self, _: Sender<Box<dyn Message>>, _: Receiver<Box<dyn Message>>);
     fn get_timeout(&self) -> u64;
     fn start(&self);
     fn is_running(&self) -> bool;

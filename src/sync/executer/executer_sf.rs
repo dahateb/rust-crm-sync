@@ -1,12 +1,12 @@
-use config::SyncConfig;
+use crate::config::SyncConfig;
+use crate::db::objects::ObjectConfig;
+use crate::db::Db;
+use crate::salesforce::Salesforce;
+use crate::sync::executer::{send_with_clear, ExecuterInner};
+use crate::util::{Message, SyncMessage};
 use crossbeam_channel::{Receiver, Sender};
-use db::objects::ObjectConfig;
-use db::Db;
-use salesforce::Salesforce;
 use std::fmt;
 use std::sync::{Arc, Mutex};
-use sync::executer::{send_with_clear, ExecuterInner};
-use util::{Message, SyncMessage};
 
 pub struct ExecuterInnerSF {
     db: Arc<Db>,
@@ -35,7 +35,7 @@ impl ExecuterInner for ExecuterInnerSF {
         //println!("executing.... ");
         let objects: Vec<ObjectConfig> = self.db.get_selected_objects(1).unwrap();
         for i in 0..objects.len() {
-            let fields = objects[i].get_field_names();
+            let _fields = objects[i].get_field_names();
             let row_result = self
                 .salesforce
                 .get_last_updated_records(&objects[i], 1)

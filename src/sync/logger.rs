@@ -1,8 +1,8 @@
+use crate::util::Message;
 use crossbeam_channel::Receiver;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 use std::time::Duration;
-use util::Message;
 
 pub struct Logger {
     receiver: Option<Receiver<Box<dyn Message>>>,

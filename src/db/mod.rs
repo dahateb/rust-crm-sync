@@ -3,16 +3,18 @@ pub mod objects;
 pub mod query;
 pub mod record;
 
-use config::DbConfig;
-use db::objects::ObjectConfig;
-use db::query::{escape_single_quote, get_lock_query, CreateQueryBuilder, UpdateQueryBuilder};
-use db::record::Record;
+use crate::config::DbConfig;
+use crate::db::objects::ObjectConfig;
+use crate::db::query::{
+    escape_single_quote, get_lock_query, CreateQueryBuilder, UpdateQueryBuilder,
+};
+use crate::db::record::Record;
+use crate::salesforce::objects::{Field, SObjectDescribe, SObjectRowResultWrapper};
 use fallible_iterator::FallibleIterator;
 use postgres::rows::Rows;
 use r2d2::config::Builder;
 use r2d2::Pool;
 use r2d2_postgres::{PostgresConnectionManager, TlsMode};
-use salesforce::objects::{Field, SObjectDescribe, SObjectRowResultWrapper};
 use serde_json;
 use std::collections::HashMap;
 

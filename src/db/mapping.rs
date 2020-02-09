@@ -1,4 +1,4 @@
-use salesforce::objects::Field;
+use crate::salesforce::objects::Field;
 use std::collections::HashMap;
 
 static DEFAULT: &str = "varchar";

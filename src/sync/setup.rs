@@ -1,7 +1,7 @@
-use db::objects::ObjectConfig;
-use db::Db;
-use salesforce::objects::SObject;
-use salesforce::Salesforce;
+use crate::db::objects::ObjectConfig;
+use crate::db::Db;
+use crate::salesforce::objects::SObject;
+use crate::salesforce::Salesforce;
 use std::sync::Arc;
 use std::sync::Mutex;
 

@@ -1,18 +1,18 @@
-pub mod worker;
 pub mod websocket;
+pub mod worker;
 
+use crate::db::Db;
+use crate::salesforce::Salesforce;
+use crate::server::response;
+use crate::server::router::worker::AsyncRouter;
+use crate::sync::setup::Setup;
+use crate::util::Message;
 use chrono::prelude::Utc;
 use chrono::TimeZone;
 use crossbeam_channel::{unbounded, Receiver, Sender};
-use db::Db;
 use futures::future;
 use hyper::{Body, Method, Request, StatusCode};
-use salesforce::Salesforce;
-use server::response;
-use server::router::worker::AsyncRouter;
 use std::sync::{Arc, Mutex};
-use sync::setup::Setup;
-use util::Message;
 
 pub struct Router {
     sync_toggle_switch: Arc<Mutex<bool>>,

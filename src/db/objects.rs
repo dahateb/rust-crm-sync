@@ -1,4 +1,4 @@
-use salesforce::objects::{Field, SObjectConfiguration};
+use crate::salesforce::objects::{Field, SObjectConfiguration};
 use serde_json;
 
 #[derive(Debug, Clone)]

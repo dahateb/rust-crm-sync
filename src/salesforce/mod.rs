@@ -4,12 +4,12 @@ pub mod objects;
 use self::objects::{
     SObject, SObjectConfiguration, SObjectDescribe, SObjectList, SObjectRowResultWrapper,
 };
+use crate::config::SalesforceConfig;
+use crate::db::objects::ObjectConfig;
+use crate::db::record::Record;
+use crate::salesforce::client::Client;
 use chrono::prelude::*;
 use chrono::Duration;
-use config::SalesforceConfig;
-use db::objects::ObjectConfig;
-use db::record::Record;
-use salesforce::client::Client;
 use serde_json::{self, Value};
 use std::collections::HashMap;
 use std::ops::Sub;

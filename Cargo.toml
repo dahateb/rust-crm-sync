@@ -2,6 +2,7 @@
 name = "rust-crm-sync"
 version = "0.1.1"
 authors = ["dan"]
+edition = "2018"
 
 [dependencies]
 reqwest = "0.9.5"

@@ -1,7 +1,7 @@
+use crate::sync::setup::Setup;
+use crate::util::{Message, TriggerMessage};
 use crossbeam_channel::{Receiver, Sender};
 use std::time::Instant;
-use sync::setup::Setup;
-use util::{Message, TriggerMessage};
 
 pub struct AsyncRouter {
     setup: Setup,

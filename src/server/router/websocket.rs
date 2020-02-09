@@ -1,12 +1,12 @@
 use crossbeam_channel::Receiver;
 use futures::prelude::*;
 //use futures::{future, stream};
+use crate::util::Message as SyncMessage;
 use hyper::header::*;
 use hyper::{Body, Request, Response, StatusCode, Version};
 use tokio_tungstenite::tungstenite::protocol::Message;
 use tokio_tungstenite::tungstenite::protocol::Role;
 use tokio_tungstenite::WebSocketStream;
-use util::Message as SyncMessage;
 
 pub fn mux(req: Request<Body>, receiver: Receiver<Box<dyn SyncMessage>>) -> Response<Body> {
     // All of this stuff should be done by a helper in the websocket library.

@@ -1,4 +1,4 @@
-use config::SalesforceConfig;
+use crate::config::SalesforceConfig;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::{Client as ReqClient, Method, Request, RequestBuilder, Response};
 use serde_aux::prelude::deserialize_number_from_string;

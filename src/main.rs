@@ -34,10 +34,10 @@ mod salesforce;
 mod server;
 mod sync;
 mod util;
-use config::Config;
-use server::ApiServer as Server;
+use crate::config::Config;
+use crate::server::ApiServer as Server;
+use crate::sync::Sync;
 use std::env;
-use sync::Sync;
 
 lazy_static! {
     static ref CONF: Config = Config::new("config.1.json").unwrap();

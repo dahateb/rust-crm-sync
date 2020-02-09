@@ -1,9 +1,9 @@
+use crate::sync::setup::Setup;
 use crossbeam_channel::Sender;
 use futures::{future, Future, Stream};
 use hyper::http::response::Builder;
 use hyper::{Body, Response, StatusCode};
 use std::collections::HashMap;
-use sync::setup::Setup;
 use url::form_urlencoded;
 
 pub type BoxFut = Box<dyn Future<Item = Response<Body>, Error = hyper::Error> + Send>;

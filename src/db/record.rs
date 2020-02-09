@@ -62,7 +62,7 @@ impl Record {
                     None => None,
                 },
                 &BOOL => match row.get::<_, Option<bool>>(idx) {
-                    Some(val) => Some(Value::Bool(row.get::<_, bool>(idx))),
+                    Some(_val) => Some(Value::Bool(row.get::<_, bool>(idx))),
                     None => Some(Value::Bool(false)),
                 },
                 &TIMESTAMP => match row.get::<_, Option<NaiveDateTime>>(idx) {

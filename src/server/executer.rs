@@ -1,11 +1,13 @@
-use config::SyncConfig;
+use crate::config::SyncConfig;
+use crate::db::Db;
+use crate::salesforce::Salesforce;
+use crate::sync::executer::{
+    executer_db::ExecuterInnerDB, executer_sf::ExecuterInnerSF, ExecuterInner,
+};
+use crate::util::Message;
 use crossbeam_channel::{Receiver, Sender};
-use db::Db;
-use salesforce::Salesforce;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use sync::executer::{executer_db::ExecuterInnerDB, executer_sf::ExecuterInnerSF, ExecuterInner};
-use util::Message;
 
 pub struct Executer2 {
     toggle_switch: Arc<Mutex<bool>>,
