@@ -5,7 +5,7 @@ pub mod router;
 use config::Config;
 use crossbeam_channel::bounded;
 use db::Db;
-use futures::{future, Future};
+use futures::{future, Future, lazy};
 use hyper::service::{NewService, Service};
 use hyper::{Body, Error, Request, Response, Server};
 use salesforce::Salesforce;
@@ -14,8 +14,8 @@ use server::router::Router;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use sync::executer::{send_with_clear, MESSAGE_CHANNEL_SIZE};
-use tokio::prelude::*;
-use tokio::timer::Interval;
+use tokio_01::prelude::*;
+use tokio_01::timer::Interval;
 use util::SyncMessage;
 
 pub struct ApiServer {
@@ -67,11 +67,11 @@ impl ApiServer {
                     Ok(())
                 })
                 .map_err(|e| eprintln!("executer errored; err={:?}", e));
-        hyper::rt::run(hyper::rt::lazy(move || {
+        tokio_compat::run(lazy(move || {
             println!("Serving at {}", addr);
-            hyper::rt::spawn(server); //<======
-            hyper::rt::spawn(worker);
-            hyper::rt::spawn(executer_worker);
+            tokio_01::spawn(lazy(|| server)); //<======
+            tokio_01::spawn(lazy(|| worker));
+            tokio_01::spawn(lazy(|| executer_worker));
             Ok(())
         }));
     }

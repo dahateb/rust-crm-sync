@@ -13,7 +13,8 @@ extern crate serde;
 extern crate serde_aux;
 extern crate sha1;
 extern crate time;
-extern crate tokio;
+extern crate tokio_compat;
+extern crate tokio_01;
 extern crate tokio_tungstenite;
 extern crate url;
 
@@ -38,7 +39,7 @@ use std::env;
 use sync::Sync;
 
 lazy_static! {
-    static ref CONF: Config = Config::new("config.json").unwrap();
+    static ref CONF: Config = Config::new("config.1.json").unwrap();
 }
 
 fn main() {

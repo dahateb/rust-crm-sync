@@ -76,7 +76,7 @@ pub fn mux(req: Request<Body>, receiver: Receiver<Box<dyn SyncMessage>>) -> Resp
             let x = WebSocketStream::from_raw_socket(upgraded, Role::Server, None);
             x
         });
-    tokio::spawn(on_upgrade.and_then(move |ws| {
+    tokio_01::spawn(on_upgrade.and_then(move |ws| {
         let (sink, stream) = ws.split();
 
         let responses = stream.map(move |_from_message| {
