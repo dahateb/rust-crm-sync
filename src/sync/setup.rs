@@ -30,9 +30,9 @@ impl Setup {
         }
     }
 
-    pub fn list_salesforce_objects<F>(&self, print_func: F) -> Result<Vec<String>, String>
+    pub fn list_salesforce_objects<F, T>(&self, print_func: F) -> Result<Vec<T>, String>
     where
-        F: FnMut((u32, &String, &String, bool, bool, bool)) -> String,
+        F: FnMut((u32, &String, &String, bool, bool, bool)) -> T,
     {
         let sf_objects = self.salesforce.get_objects()?;
         self.cache.lock().unwrap().sf_objects = Some(sf_objects);
@@ -65,9 +65,9 @@ impl Setup {
         Ok(result)
     }
 
-    pub fn list_db_objects<F>(&self, print_func: F) -> Result<Vec<String>, String>
+    pub fn list_db_objects<F, T>(&self, print_func: F) -> Result<Vec<T>, String>
     where
-        F: FnMut((u32, &String, u32, usize)) -> String,
+        F: FnMut((u32, &String, u32, usize)) -> T,
     {
         let objects = self.db.get_selected_objects(-1)?;
         self.cache.lock().unwrap().db_objects = Some(objects);
@@ -85,7 +85,7 @@ impl Setup {
                 (i, &obj.name, obj.count, obj.fields.len())
             })
             .map(print_func)
-            .collect::<Vec<String>>();
+            .collect::<Vec<_>>();
         Ok(result)
     }
 

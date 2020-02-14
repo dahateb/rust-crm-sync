@@ -7,6 +7,7 @@ use crate::config::Config;
 use crate::db::Db;
 use crate::salesforce::Salesforce;
 use crate::server::executer::Executer2;
+use crate::server::http_routes::Router as Router2;
 use crate::server::router::Router;
 use crate::sync::executer::MESSAGE_CHANNEL_SIZE;
 use crossbeam_channel::bounded;
@@ -29,11 +30,17 @@ impl ApiServer {
         let db_arc = Arc::new(Db::new(&config.db));
         let (tx, rx) = bounded(MESSAGE_CHANNEL_SIZE);
         let executer = Executer2::new(sf_arc.clone(), db_arc.clone(), &config.sync);
-        let router = Arc::new(Router::new(
-            sf_arc,
-            db_arc,
+        let router2 = Arc::new(Router2::new(
+            sf_arc.clone(),
+            db_arc.clone(),
             rx.clone(),
-            executer.toggle_switch(),
+            executer.toggle_switch().clone(),
+        ));
+        let router = Arc::new(Router::new(
+            sf_arc.clone(),
+            db_arc.clone(),
+            rx.clone(),
+            executer.toggle_switch().clone(),
         ));
         let addr = config.server.url.parse().unwrap();
         let async_router = router.worker();
@@ -51,7 +58,7 @@ impl ApiServer {
                 Ok(())
             })
             .map_err(|e| eprintln!("worker errored; err={:?}", e));
-        let skip_switch = executer.toggle_switch();
+        let skip_switch = executer.toggle_switch().clone();
         //sync worker
         let executer_worker =
             Interval::new(Instant::now(), Duration::from_millis(config.sync.timeout))
@@ -69,8 +76,8 @@ impl ApiServer {
                 .map_err(|e| eprintln!("executer errored; err={:?}", e));
         tokio_compat::run(lazy(move || {
             println!("Serving at {}", addr);
-            tokio_02::spawn(async {
-                warp::serve(http_routes::build_routes())
+            tokio_02::spawn(async move {
+                warp::serve(router2.build_routes())
                     .run(([127, 0, 0, 1], 3030))
                     .await;
             });
