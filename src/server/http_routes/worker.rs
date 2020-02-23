@@ -38,6 +38,7 @@ impl AsyncRouter {
                                 TriggerMessage::new(notification, count, start_time.elapsed());
                             let _ = sender.send(Box::new(message));
                         };
+                        println!("Got new setup message!");
                         let _res = setup.setup_sf_object(message.1, true, notify);
                     });
                 }

@@ -1,15 +1,22 @@
+pub mod worker;
+
 use crate::db::Db;
 use crate::salesforce::Salesforce;
 use crate::server::response;
+use crate::server::http_routes::worker::AsyncRouter;
 use crate::sync::setup::Setup;
 use crate::util::Message;
 use chrono::prelude::Utc;
 use chrono::TimeZone;
-use std::collections::HashMap;
 use crossbeam_channel::{unbounded, Receiver, Sender};
+use std::collections::HashMap;
 use std::str;
 use std::sync::{Arc, Mutex};
+use warp::http::StatusCode;
+
+use warp::reply::{html, json};
 use warp::Filter;
+
 
 pub struct Router {
     sync_toggle_switch: Arc<Mutex<bool>>,
@@ -41,6 +48,14 @@ impl Router {
         }
     }
 
+    pub fn worker(&self) -> AsyncRouter {
+        AsyncRouter::new(
+            self.setup.clone(),
+            self.trigger_receiver.clone(),
+            self.message_sender.clone(),
+        )
+    }
+
     pub fn build_routes(
         &self,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -58,13 +73,20 @@ impl Router {
 
         let index = warp::get()
             .and(warp::path::end())
-            .map(|| warp::reply::html(str::from_utf8(response::INDEX).unwrap()));
+            .map(|| html(str::from_utf8(response::INDEX).unwrap()));
 
         index
             .or(self.info())
             .or(self.setup_list())
             .or(self.setup_available())
             .or(self.setup_new())
+            .or(self.setup_delete())
+            .or(self.get_messages())
+            .or(self.get_sync_messages())
+            .or(self.start_sync())
+            .or(self.stop_sync())
+            .or(self.ws_sync_messages())
+            .or(self.ws_messages())
             .with(cors)
     }
 
@@ -79,9 +101,7 @@ impl Router {
             "instance_url": sf_conn_data.instance_url,
             "created": Utc.timestamp_millis(sf_conn_data.issued_at).to_rfc2822()
         });
-        warp::get()
-            .and(warp::path("info"))
-            .map(move || warp::reply::json(&res))
+        warp::get().and(warp::path("info")).map(move || json(&res))
     }
 
     // GET /setup/list
@@ -102,7 +122,7 @@ impl Router {
         let res = self.setup.list_salesforce_objects(print_func).unwrap();
         warp::get()
             .and(warp::path!("setup" / "list"))
-            .map(move || warp::reply::json(&res))
+            .map(move || json(&res))
     }
 
     // GET /setup/available
@@ -115,33 +135,121 @@ impl Router {
                 "name":  obj.1,
                 "count":  obj.2,
                 "num_fields": obj.3
-            });
+            })
         };
         let res = self.setup.list_db_objects(print_func).unwrap();
         warp::get()
             .and(warp::path!("setup" / "available"))
-            .map(move || warp::reply::json(&res))
+            .map(move || json(&res))
     }
-
-    fn setup_new(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
-    {
+    // POST /setup/new
+    fn setup_new(
+        &self,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         let sender = self.trigger_sender.clone();
         warp::post()
-        .and(warp::path!("setup" / "new"))
-        .and(warp::body::form())
-        .map(move |params: HashMap<String, String>| {
-            let number = if let Some(n) = params.get("number") {
-                if let Ok(v) = n.parse::<usize>() {
-                    v
-                } else {
-                    return "Error";
+            .and(warp::path!("setup" / "new"))
+            .and(warp::body::form())
+            .map(move |params: HashMap<String, String>| {
+                response::response_for_sender(
+                    params,
+                    "/setup/new".to_owned(),
+                    sender.clone(),
+                    StatusCode::CREATED,
+                )
+            })
+    }
+
+    // POST /setup/delete
+    fn setup_delete(
+        &self,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        let sender = self.trigger_sender.clone();
+        warp::post()
+            .and(warp::path!("setup" / "delete"))
+            .and(warp::body::form())
+            .map(move |params: HashMap<String, String>| {
+                response::response_for_sender(
+                    params,
+                    "/setup/new".to_owned(),
+                    sender.clone(),
+                    StatusCode::CREATED,
+                )
+            })
+    }
+
+    // GET /messages
+    pub fn get_messages(
+        &self,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        let recv = self.message_receiver.clone();
+        warp::get().and(warp::path!("messages")).map(move || {
+            let mut result = Vec::new();
+            while let Ok(message) = recv.try_recv() {
+                result.push(message.as_value());
+            }
+            json(&result)
+        })
+    }
+
+    // GET /sync/messages
+    pub fn get_sync_messages(
+        &self,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        let recv = self.sync_receiver.clone();
+        warp::get()
+            .and(warp::path!("sync" / "messages"))
+            .map(move || {
+                let mut result = Vec::new();
+                while let Ok(message) = recv.try_recv() {
+                    result.push(message.as_value());
                 }
-            } else {
-                return "Error";
-            };
-            let _ = sender.send(("setup/new".to_owned(), number));
-            println!("{}", number);
-            "OK"
+                json(&result)
+            })
+    }
+
+    // PUT /sync/start
+    pub fn start_sync(
+        &self,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        let sync_switch = self.sync_toggle_switch.clone();
+        warp::put().and(warp::path!("sync" / "start")).map(move || {
+            *sync_switch.lock().unwrap() = true;
+            json(&json!({"sync_running": true}))
+        })
+    }
+
+    // PUT /sync/stop
+    pub fn stop_sync(
+        &self,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        let sync_switch = self.sync_toggle_switch.clone();
+        warp::put().and(warp::path!("sync" / "start")).map(move || {
+            *sync_switch.lock().unwrap() = false;
+            json(&json!({"sync_running": false}))
+        })
+    }
+
+    pub fn ws_sync_messages(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        let receiver = self.sync_receiver.clone();
+        warp::get()
+        .and(warp::path!("ws" / "sync" / "messages"))
+        .and(warp::ws())
+        .map(move |ws: warp::ws::Ws| {
+            let recv = receiver.clone();
+            ws.on_upgrade(move |socket| response::handle_ws(socket, recv))
+        })
+    }
+
+    pub fn ws_messages(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        let receiver = self.message_receiver.clone();
+        warp::get()
+        .and(warp::path!("ws" / "messages"))
+        .and(warp::ws())
+        .map(move |ws: warp::ws::Ws| {
+            let recv = receiver.clone();
+            ws.on_upgrade(move |socket| response::handle_ws(socket, recv))
         })
     }
 }
+

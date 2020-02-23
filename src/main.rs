@@ -1,23 +1,3 @@
-extern crate base64;
-extern crate chrono;
-extern crate crossbeam_channel;
-extern crate fallible_iterator;
-extern crate futures;
-extern crate hyper;
-extern crate postgres;
-extern crate pretty_env_logger;
-extern crate r2d2;
-extern crate r2d2_postgres;
-extern crate reqwest;
-extern crate serde;
-extern crate serde_aux;
-extern crate sha1;
-extern crate time;
-extern crate tokio_01;
-extern crate tokio_compat;
-extern crate tokio_tungstenite;
-extern crate url;
-extern crate warp;
 
 #[macro_use]
 extern crate lazy_static;
@@ -50,6 +30,6 @@ fn main() {
         let mut syncher = Sync::new(&CONF);
         syncher.run();
     } else {
-        Server::start(&CONF);
+        Server::new(&CONF).run();
     }
 }

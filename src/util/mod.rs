@@ -1,16 +1,19 @@
 use std::time::Duration;
 
+#[derive(Serialize, Deserialize)]
 pub enum MessageType {
     SetupTriggerType,
     SyncMessageType,
     TriggerMessageType,
 }
 
-pub trait Message: std::marker::Send {
+pub trait Message: std::marker::Send + Sync{
     fn message_type(&self) -> &MessageType;
     fn to_string(&self) -> String;
+    fn as_value(&self) -> serde_json::Value;
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct SyncMessage {
     message_type: MessageType,
     message: String,
@@ -34,15 +37,19 @@ impl Message for SyncMessage {
         &self.message_type
     }
     fn to_string(&self) -> String {
+        self.as_value().to_string()
+    }
+
+    fn as_value(&self) -> serde_json::Value {
         json!({
             "message": self.message,
             "obj_type": self.obj_type,
             "obj_count": self.obj_count
         })
-        .to_string()
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct TriggerMessage {
     message_type: MessageType,
     message: String,
@@ -66,11 +73,13 @@ impl Message for TriggerMessage {
         &self.message_type
     }
     fn to_string(&self) -> String {
+        self.as_value().to_string()
+    }
+    fn as_value(&self) -> serde_json::Value {
         json!({
             "message": self.message,
             "obj_count": self.obj_count,
             "elapsed": self.elapsed.as_secs()
         })
-        .to_string()
     }
 }
