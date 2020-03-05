@@ -1,4 +1,3 @@
-
 #[macro_use]
 extern crate lazy_static;
 
@@ -7,6 +6,10 @@ extern crate serde_derive;
 
 #[macro_use]
 extern crate serde_json;
+
+extern crate pretty_env_logger;
+#[macro_use]
+extern crate log;
 
 mod config;
 mod db;
@@ -24,6 +27,7 @@ lazy_static! {
 }
 
 fn main() {
+    pretty_env_logger::init();
     let args: Vec<String> = env::args().collect();
     //println!("{}", args[1]);
     if args.len() > 1 && args[1] == "-i" {

@@ -7,7 +7,7 @@ pub enum MessageType {
     TriggerMessageType,
 }
 
-pub trait Message: std::marker::Send + Sync{
+pub trait Message: std::marker::Send + Sync {
     fn message_type(&self) -> &MessageType;
     fn to_string(&self) -> String;
     fn as_value(&self) -> serde_json::Value;

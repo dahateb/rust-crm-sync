@@ -70,6 +70,7 @@ impl Setup {
         F: FnMut((u32, &String, u32, usize)) -> T,
     {
         let objects = self.db.get_selected_objects(-1)?;
+        debug!("list_db_objects: objects len: {}", objects.len());
         self.cache.lock().unwrap().db_objects = Some(objects);
         let mut i: u32 = 0;
         let result = self
@@ -172,6 +173,8 @@ impl Setup {
         self.db.destroy(obj.id, &obj.name);
         Ok(obj.name.clone())
     }
+
+    pub fn update_db_object(&self, index: usize) {}
 
     pub fn salesforce(&self) -> Arc<Salesforce> {
         self.salesforce.clone()

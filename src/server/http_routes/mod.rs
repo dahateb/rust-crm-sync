@@ -1,9 +1,11 @@
+pub mod handlers;
 pub mod worker;
 
 use crate::db::Db;
 use crate::salesforce::Salesforce;
-use crate::server::response;
+use crate::server::http_routes::handlers::{handle_salesforce_get_list, handle_setup_list, handle_ws};
 use crate::server::http_routes::worker::AsyncRouter;
+use crate::server::response;
 use crate::sync::setup::Setup;
 use crate::util::Message;
 use chrono::prelude::Utc;
@@ -15,8 +17,7 @@ use std::sync::{Arc, Mutex};
 use warp::http::StatusCode;
 
 use warp::reply::{html, json};
-use warp::Filter;
-
+use warp::{http::Method, Filter};
 
 pub struct Router {
     sync_toggle_switch: Arc<Mutex<bool>>,
@@ -68,8 +69,20 @@ impl Router {
                 "Origin",
                 "Access-Control-Request-Method",
                 "Access-Control-Request-Headers",
+                "Host",
+                "Connection",
+                "Accept",
+                "Accept-Encoding",
+                "Accept-Language",
+                "Content-Type",
             ])
-            .allow_methods(vec!["*"]);
+            .allow_methods(&[
+                Method::GET,
+                Method::POST,
+                Method::DELETE,
+                Method::OPTIONS,
+                Method::PUT,
+            ]);
 
         let index = warp::get()
             .and(warp::path::end())
@@ -88,6 +101,7 @@ impl Router {
             .or(self.ws_sync_messages())
             .or(self.ws_messages())
             .with(cors)
+            .with(warp::log("info"))
     }
 
     // GET /info
@@ -108,39 +122,22 @@ impl Router {
     fn setup_list(
         &self,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        let print_func = |obj: (u32, &String, &String, bool, bool, bool)| {
-            json!({
-                "num":  obj.0,
-                "name":  obj.1,
-                "label": obj.2,
-                "custom_setting": obj.3,
-                "createable":  obj.4,
-                "synched": obj.5
-            })
-        };
-
-        let res = self.setup.list_salesforce_objects(print_func).unwrap();
+        let setup = self.setup.clone();
         warp::get()
             .and(warp::path!("setup" / "list"))
-            .map(move || json(&res))
+            .and(warp::any().map(move || setup.clone()))
+            .and_then(handle_salesforce_get_list)
     }
 
     // GET /setup/available
     fn setup_available(
         &self,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        let print_func = |obj: (u32, &String, u32, usize)| {
-            json!({
-                "num":  obj.0,
-                "name":  obj.1,
-                "count":  obj.2,
-                "num_fields": obj.3
-            })
-        };
-        let res = self.setup.list_db_objects(print_func).unwrap();
+        let setup = self.setup.clone();
         warp::get()
             .and(warp::path!("setup" / "available"))
-            .map(move || json(&res))
+            .and(warp::any().map(move || setup.clone()))
+            .and_then(handle_setup_list)
     }
     // POST /setup/new
     fn setup_new(
@@ -230,26 +227,29 @@ impl Router {
         })
     }
 
-    pub fn ws_sync_messages(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    pub fn ws_sync_messages(
+        &self,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         let receiver = self.sync_receiver.clone();
         warp::get()
-        .and(warp::path!("ws" / "sync" / "messages"))
-        .and(warp::ws())
-        .map(move |ws: warp::ws::Ws| {
-            let recv = receiver.clone();
-            ws.on_upgrade(move |socket| response::handle_ws(socket, recv))
-        })
+            .and(warp::path!("ws" / "sync" / "messages"))
+            .and(warp::ws())
+            .map(move |ws: warp::ws::Ws| {
+                let recv = receiver.clone();
+                ws.on_upgrade(move |socket| handle_ws(socket, recv))
+            })
     }
 
-    pub fn ws_messages(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    pub fn ws_messages(
+        &self,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         let receiver = self.message_receiver.clone();
         warp::get()
-        .and(warp::path!("ws" / "messages"))
-        .and(warp::ws())
-        .map(move |ws: warp::ws::Ws| {
-            let recv = receiver.clone();
-            ws.on_upgrade(move |socket| response::handle_ws(socket, recv))
-        })
+            .and(warp::path!("ws" / "messages"))
+            .and(warp::ws())
+            .map(move |ws: warp::ws::Ws| {
+                let recv = receiver.clone();
+                ws.on_upgrade(move |socket| handle_ws(socket, recv))
+            })
     }
 }
-

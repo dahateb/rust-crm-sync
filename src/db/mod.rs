@@ -89,6 +89,7 @@ impl Db {
         let query = format!("SELECT id, name, fields, last_sync_time FROM config.objects WHERE last_sync_time < current_timestamp - interval '{} minutes'",
                             interval);
         let rows: Rows = conn.query(query.as_str(), &[]).unwrap();
+        debug!("get_selected_objects: Num rows: {}", rows.len());
         let result = rows
             .iter()
             .map(|row| {
